@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
-      SMTP_HOST: smtp.163.com
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
       SMTP_PORT: "994"
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
