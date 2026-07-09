@@ -1,0 +1,88 @@
+name: PE/VC Competitive Intelligence Weekly
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      SMTP_HOST: smtp.163.com
+      SMTP_PORT: "994"
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM: ${{ secrets.SMTP_FROM }}
+      RECIPIENTS: ${{ vars.RECIPIENTS || '' }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      DEEPSEEK_BASE_URL: ${{ vars.DEEPSEEK_BASE_URL || 'https://ai.ctaigw.cn/v1' }}
+      DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-v4-flash' }}
+      RSSHUB_BASE_URL: http://127.0.0.1:1200
+      HTTP_TIMEOUT: "12"
+      ENABLE_TARGETED_RSS_SEARCH: "1"
+      TARGETED_RSS_COMPANY_LIMIT: "0"
+      MAX_ITEMS: "0"
+      EMAIL_CHUNK_SIZE: "25"
+      EMAIL_DELIVERY_MODE: "auto"
+      AI_HTTP_TIMEOUT: "60"
+      BATCH_SIZE: "8"
+      BATCH_SEARCH_DELAY: "2"
+      SEARCH_DAYS: "30"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Start local RSSHub
+        run: |
+          docker run -d --name rsshub -p 1200:1200 diygod/rsshub
+          for i in {1..30}; do
+            if curl -fsS "http://127.0.0.1:1200/" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs rsshub
+          exit 1
+
+      - name: Generate PE/VC weekly intelligence report
+        run: |
+          python3 pe_vc_weekly_report.py \
+            --dry-run \
+            --recipients "${RECIPIENTS}"
+
+      - name: Wait until Beijing 09:00 before sending
+        run: |
+          TARGET_HOUR=1
+          CURRENT_HOUR="$(date -u +%H)"
+          TODAY_TARGET="$(date -u -d "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:00:00" +%s)"
+          NOW="$(date -u +%s)"
+          if [ "$NOW" -lt "$TODAY_TARGET" ]; then
+            WAIT_SEC=$((TODAY_TARGET - NOW))
+            echo "Waiting ${WAIT_SEC}s until Beijing 09:00 before sending."
+            sleep "${WAIT_SEC}"
+          else
+            echo "Beijing 09:00 has already passed; sending immediately."
+          fi
+
+      - name: Send generated report
+        run: |
+          python3 pe_vc_weekly_report.py \
+            --send-existing \
+            --recipients "${RECIPIENTS}"
+
+      - name: Upload generated report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pe-vc-weekly-report
+          path: |
+            pe_vc_weekly_last_report.json
+            pe_vc_weekly_last_report.html
+          if-no-files-found: ignore
