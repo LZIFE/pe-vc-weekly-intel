@@ -10,3 +10,5 @@ pe_vc_weekly_last_report.json.bak
 pe_vc_weekly_last_report.html.bak.reasonix/
 .DS_Store
 test_output.html
+*.bak
+pe_vc_weekly_last_report.*
