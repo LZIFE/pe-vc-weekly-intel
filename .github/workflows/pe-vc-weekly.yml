@@ -57,18 +57,18 @@ jobs:
             --dry-run \
             --recipients "${RECIPIENTS}"
 
-      - name: Wait until Beijing 09:00 before sending
+      - name: Wait until Beijing 10:20 before sending
         run: |
-          TARGET_HOUR=1
-          CURRENT_HOUR="$(date -u +%H)"
-          TODAY_TARGET="$(date -u -d "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:00:00" +%s)"
-          NOW="$(date -u +%s)"
-          if [ "$NOW" -lt "$TODAY_TARGET" ]; then
-            WAIT_SEC=$((TODAY_TARGET - NOW))
-            echo "Waiting ${WAIT_SEC}s until Beijing 09:00 before sending."
+          TARGET_HOUR=2
+          TARGET_MIN=20
+          CURRENT_EPOCH="$(date -u +%s)"
+          TODAY_TARGET="$(date -u -d "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:${TARGET_MIN}:00" +%s 2>/dev/null || date -u -j -f '%Y-%m-%d %H:%M:%S' "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:${TARGET_MIN}:00" +%s)"
+          if [ "$CURRENT_EPOCH" -lt "$TODAY_TARGET" ]; then
+            WAIT_SEC=$((TODAY_TARGET - CURRENT_EPOCH))
+            echo "Waiting ${WAIT_SEC}s until Beijing 10:20 before sending."
             sleep "${WAIT_SEC}"
           else
-            echo "Beijing 09:00 has already passed; sending immediately."
+            echo "Beijing 10:20 has already passed; sending immediately."
           fi
 
       - name: Send generated report
