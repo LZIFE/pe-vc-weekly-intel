@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import cost_tracker
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -782,7 +783,14 @@ def deepseek_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> d
         "max_tokens": 16384,
         "stream": False,
     }
-    return http_post_json(url, body, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
+    try:
+        result = http_post_json(url, body, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
+        usage = result.get("usage", {}) if isinstance(result, dict) else {}
+        cost_tracker.log_api_call(model, usage, status="success")
+        return result
+    except Exception as e:
+        cost_tracker.log_api_call(model, {}, status="error", error_msg=str(e))
+        raise
 
 
 def make_batch_analysis_prompt(
