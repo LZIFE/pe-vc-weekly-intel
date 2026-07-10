@@ -202,6 +202,20 @@ EXTRA_COMPANY_ALIASES: dict[str, list[str]] = {
     "L Catterton路威凯腾": ["L Catterton", "路威凯腾"],
     "LYFE Capital洲嶺资本": ["LYFE Capital", "洲嶺资本"],
     "星连资本(Z基金)": ["星连资本", "Z基金"],
+    "德同资本": ["德同", "Detong Capital", "Detong", "dtcap", "邵俊", "田立新"],
+    "联影医疗": ["联影", "United Imaging"],
+    "禾赛科技": ["禾赛", "Hesai"],
+    "伟测半导体": ["伟测"],
+    "盟科药业": ["盟科"],
+    "百融云创": ["百融云", "百融"],
+    "微拍堂": ["微拍"],
+    "轻松健康": ["轻松筹", "轻松集团"],
+    "小电科技": ["小电"],
+    "博睿康": ["博睿"],
+    "微芯生物": ["微芯"],
+    "影谱科技": ["影谱"],
+    "无问芯穹": ["无问"],
+    "灵心巧手": ["灵心"],
 }
 
 # Static aliases for company matching

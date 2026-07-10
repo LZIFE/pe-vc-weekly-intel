@@ -1,8 +1,9 @@
-name: PE/VC Competitive Intelligence Weekly
+name: PE/VC Competitive Intelligence Daily
 
 on:
   schedule:
-    - cron: "0 0 * * 1"
+    # Beijing 8:00 = UTC 0:00 — daily collection starts
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
@@ -29,7 +30,7 @@ jobs:
       AI_HTTP_TIMEOUT: "60"
       BATCH_SIZE: "8"
       BATCH_SEARCH_DELAY: "2"
-      SEARCH_DAYS: "30"
+      SEARCH_DAYS: "90"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,24 +52,25 @@ jobs:
           docker logs rsshub
           exit 1
 
-      - name: Generate PE/VC weekly intelligence report
+      - name: Generate PE/VC daily intelligence report
         run: |
           python3 pe_vc_weekly_report.py \
             --dry-run \
             --recipients "${RECIPIENTS}"
 
-      - name: Wait until Beijing 10:20 before sending
+      - name: Wait until Beijing 9:00 before sending
         run: |
-          TARGET_HOUR=2
-          TARGET_MIN=20
+          # Beijing 9:00 = UTC 1:00
+          TARGET_HOUR=1
+          TARGET_MIN=0
           CURRENT_EPOCH="$(date -u +%s)"
           TODAY_TARGET="$(date -u -d "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:${TARGET_MIN}:00" +%s 2>/dev/null || date -u -j -f '%Y-%m-%d %H:%M:%S' "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:${TARGET_MIN}:00" +%s)"
           if [ "$CURRENT_EPOCH" -lt "$TODAY_TARGET" ]; then
             WAIT_SEC=$((TODAY_TARGET - CURRENT_EPOCH))
-            echo "Waiting ${WAIT_SEC}s until Beijing 10:20 before sending."
+            echo "Waiting ${WAIT_SEC}s until Beijing 9:00 before sending."
             sleep "${WAIT_SEC}"
           else
-            echo "Beijing 10:20 has already passed; sending immediately."
+            echo "Beijing 9:00 has already passed; sending immediately."
           fi
 
       - name: Send generated report
@@ -81,7 +83,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pe-vc-weekly-report
+          name: pe-vc-daily-report
           path: |
             pe_vc_weekly_last_report.json
             pe_vc_weekly_last_report.html
