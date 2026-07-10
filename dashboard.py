@@ -143,7 +143,7 @@ def scan_telemetry() -> list[dict]:
 
                 # Compute cost with cache accounting
                 ppm = get_pricing_for_model(model)
-                cost = _compute_cost(prompt, completion, cache_hit, ppm)
+                cost = _compute_cost(prompt, completion, cache_hit, cache_miss, ppm)
 
                 record = {
                     "project": proj,
@@ -188,30 +188,33 @@ def scan_telemetry() -> list[dict]:
     return sessions
 
 
-def _cache_rate(cache_hit: int, prompt: int) -> float:
-    """Cache hit rate as percentage of prompt tokens."""
-    if prompt <= 0:
+def _cache_rate(cache_hit: int, cache_miss: int) -> float:
+    """Cache hit rate as percentage of total cache operations (hit / (hit + miss))."""
+    total = cache_hit + cache_miss
+    if total <= 0:
         return 0.0
-    return round(min(cache_hit, prompt) / prompt * 100, 1)
+    return round(cache_hit / total * 100, 1)
 
 
-def _compute_cost(prompt: int, completion: int, cache_hit: int, p: dict) -> dict:
+def _compute_cost(prompt: int, completion: int, cache_hit: int, cache_miss: int, p: dict) -> dict:
     """
     Compute cost based on DeepSeek pricing model:
-      - cache_hit tokens are billed at discounted cache_hit rate
-      - remaining prompt tokens (non-cached) are billed at input rate
-      - output tokens are billed at output rate
+      - cache_hit/(hit+miss) ratio applied to prompt tokens determines cached portion
+      - cached tokens billed at discounted cache_hit rate
+      - non-cached tokens billed at input rate
+      - output tokens billed at output rate
     """
     input_rate = p.get("input", 1e-6)
     output_rate = p.get("output", 2e-6)
     cache_rate = p.get("cache_hit", 2e-8)
 
-    # Cache hit cannot exceed prompt tokens
-    effective_cache = min(cache_hit, prompt)
-    effective_input = prompt - effective_cache
+    # Cache ratio from actual hit/miss counts
+    cache_ratio = _cache_rate(cache_hit, cache_miss) / 100.0
+    estimated_cached = round(prompt * cache_ratio)
+    estimated_noncached = prompt - estimated_cached
 
-    cost_input = effective_input * input_rate
-    cost_cache = effective_cache * cache_rate
+    cost_input = estimated_noncached * input_rate
+    cost_cache = estimated_cached * cache_rate
     cost_output = completion * output_rate
     cost_total = cost_input + cost_cache + cost_output
 
@@ -266,14 +269,15 @@ def compute_summary(sessions: list[dict]) -> dict:
             "cache": sum(s.get("cost_cache", 0) for s in sessions),
             "output": sum(s.get("cost_output", 0) for s in sessions),
         },
-        "projects": defaultdict(lambda: {"sessions": 0, "calls": 0, "prompt": 0, "completion": 0, "cache_hit": 0, "cost": 0.0, "cost_input": 0.0, "cost_cache": 0.0, "cost_output": 0.0}),
+        "projects": defaultdict(lambda: {"sessions": 0, "calls": 0, "prompt": 0, "completion": 0, "cache_hit": 0, "cache_miss": 0, "cost": 0.0, "cost_input": 0.0, "cost_cache": 0.0, "cost_output": 0.0}),
         "models": defaultdict(lambda: {"sessions": 0, "calls": 0, "prompt": 0, "completion": 0, "cache_hit": 0, "cost": 0.0}),
         "sessions": [],
     }
 
     total_prompt_all = sum(s.get("prompt_tokens", 0) for s in sessions)
     total_cache_all = sum(s.get("cache_hit_tokens", 0) for s in sessions)
-    total["total_cache_rate"] = _cache_rate(total_cache_all, total_prompt_all)
+    total_miss_all = sum(s.get("cache_miss_tokens", 0) for s in sessions)
+    total["total_cache_rate"] = _cache_rate(total_cache_all, total_miss_all)
 
     for s in sessions:
         proj = s.get("project", "unknown")
@@ -284,6 +288,7 @@ def compute_summary(sessions: list[dict]) -> dict:
         p["prompt"] += s.get("prompt_tokens", 0)
         p["completion"] += s.get("completion_tokens", 0)
         p["cache_hit"] += s.get("cache_hit_tokens", 0)
+        p["cache_miss"] += s.get("cache_miss_tokens", 0)
         p["cost"] += s.get("cost_total", 0)
         p["cost_input"] += s.get("cost_input", 0)
         p["cost_cache"] += s.get("cost_cache", 0)
@@ -305,6 +310,7 @@ def compute_summary(sessions: list[dict]) -> dict:
             "prompt": s.get("prompt_tokens", 0),
             "completion": s.get("completion_tokens", 0),
             "cache_hit": s.get("cache_hit_tokens", 0),
+            "cache_miss": s.get("cache_miss_tokens", 0),
             "cache_rate": s.get("cache_rate", 0.0),
             "cost": round(s.get("cost_total", 0), 4),
             "cost_input": round(s.get("cost_input", 0), 4),
@@ -323,7 +329,7 @@ def compute_summary(sessions: list[dict]) -> dict:
         p["cost_input"] = round(p["cost_input"], 4)
         p["cost_cache"] = round(p["cost_cache"], 4)
         p["cost_output"] = round(p["cost_output"], 4)
-        p["cache_rate"] = _cache_rate(p["cache_hit"], p["prompt"])
+        p["cache_rate"] = _cache_rate(p["cache_hit"], p["cache_miss"])
     for m in total["models"].values():
         m["cost"] = round(m["cost"], 4)
 
