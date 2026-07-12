@@ -2,8 +2,8 @@ name: PE/VC Competitive Intelligence Daily
 
 on:
   schedule:
-    # Beijing 7:30 = UTC 23:30 (previous day) — collection starts
-    - cron: "30 23 * * *"
+    # Beijing 9:45 = UTC 1:45 — collection starts
+    - cron: "45 1 * * *"
   workflow_dispatch:
 
 jobs:
@@ -64,19 +64,19 @@ jobs:
             --dry-run \
             --recipients "${RECIPIENTS}"
 
-      - name: Wait until Beijing 9:00 before sending
+      - name: Wait until Beijing 11:30 before sending
         run: |
-          # Beijing 9:00 = UTC 1:00
-          TARGET_HOUR=1
-          TARGET_MIN=0
+          # Beijing 11:30 = UTC 3:30
+          TARGET_HOUR=3
+          TARGET_MIN=30
           CURRENT_EPOCH="$(date -u +%s)"
           TODAY_TARGET="$(date -u -d "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:${TARGET_MIN}:00" +%s 2>/dev/null || date -u -j -f '%Y-%m-%d %H:%M:%S' "$(date -u +%Y-%m-%d) ${TARGET_HOUR}:${TARGET_MIN}:00" +%s)"
           if [ "$CURRENT_EPOCH" -lt "$TODAY_TARGET" ]; then
             WAIT_SEC=$((TODAY_TARGET - CURRENT_EPOCH))
-            echo "Waiting ${WAIT_SEC}s until Beijing 9:00 before sending."
+            echo "Waiting ${WAIT_SEC}s until Beijing 11:30 before sending."
             sleep "${WAIT_SEC}"
           else
-            echo "Beijing 9:00 has already passed; sending immediately."
+            echo "Beijing 11:30 has already passed; sending immediately."
           fi
 
       - name: Send generated report
