@@ -4,8 +4,7 @@
   "lookback_days": 30,
   "fallback_days": 30,
   "recipients": [
-    "readylinoffice@gmail.com",
-    "roxanne.tongjinfeng@gmail.com"
+    "readylinoffice@gmail.com"
   ],
   "source_modes": {
     "rss": true,

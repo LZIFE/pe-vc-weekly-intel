@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""一级市场私募基金管理人竞争情报周报 — PE/VC Weekly Competitive Intelligence Report."""
+"""中国TOP100私募股权GP动态周报 — China PE/VC GP Weekly Intelligence Report."""
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import difflib
 import email.message
 import html
 import json
@@ -34,7 +35,7 @@ OUT_HTML = BASE_DIR / "pe_vc_weekly_last_report.html"
 OUT_JSON_BAK = BASE_DIR / "pe_vc_weekly_last_report.json.bak"
 OUT_HTML_BAK = BASE_DIR / "pe_vc_weekly_last_report.html.bak"
 
-REPORT_NAME = "一级市场私募基金管理人竞争情报周报"
+REPORT_NAME = "中国TOP100私募股权GP动态周报"
 DEFAULT_RECIPIENTS: list[str] = []  # override via --recipients CLI or RECIPIENTS env var
 
 
@@ -281,7 +282,7 @@ _build_source_scope_map()
 def source_scope(source_name: str, channel: str = "") -> str:
     if channel == "公告":
         return "official_disclosure"
-    if channel in {"DeepSeek Batch", "DeepSeek Search", "搜索RSS"}:
+    if channel in {"Kimi Batch", "Kimi Search", "搜索RSS"}:
         return "third_party"
     return SOURCE_SCOPE_MAP.get(source_name, "third_party")
 
@@ -477,22 +478,72 @@ def is_discipline_gossip(text: str) -> bool:
 
 # ── HTTP helpers ───────────────────────────────────────────────────────
 
-_HTTP_TIMEOUT = int(os.environ.get("HTTP_TIMEOUT", "12"))
+_HTTP_TIMEOUT = int(os.environ.get("HTTP_TIMEOUT", "20"))
+_RSS_RETRIES = int(os.environ.get("RSS_RETRIES", "3"))
+_RSSHUB_BASE = os.environ.get("RSSHUB_BASE_URL", "https://rsshub.rssforever.com").rstrip("/")
+_RSSHUB_FALLBACK = os.environ.get("RSSHUB_FALLBACK_URL", "https://rsshub.app").rstrip("/")
+# Additional RSSHub mirrors for 403 fallback
+_RSSHUB_MIRRORS = [
+    m.strip()
+    for m in os.environ.get("RSSHUB_MIRRORS", "https://rsshub.bili.xyz,https://rsshub.vercel.app").split(",")
+    if m.strip()
+]
 
 
 def http_get(url: str, timeout: int | None = None, retries: int = 1) -> bytes:
     if timeout is None:
         timeout = _HTTP_TIMEOUT
     last_exc: Exception | None = None
-    for _ in range(1 + retries):
+    for attempt in range(1 + retries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return resp.read()
         except Exception as exc:
             last_exc = exc
-            time.sleep(2)
+            if attempt < retries:
+                sleep_time = 2 * (2 ** attempt)  # exponential backoff: 2s, 4s, 8s
+                time.sleep(sleep_time)
     raise last_exc  # type: ignore[misc]
+
+
+def http_get_with_fallback(
+    primary_url: str,
+    fallback_url: str | None = None,
+    timeout: int | None = None,
+    retries: int = 3,
+) -> bytes:
+    """Fetch with retries on primary, then fallback to alternative URLs."""
+    if timeout is None:
+        timeout = _HTTP_TIMEOUT
+    last_exc: Exception | None = None
+    # Try primary
+    try:
+        return http_get(primary_url, timeout=timeout, retries=retries)
+    except Exception as exc:
+        last_exc = exc
+    # Try fallback (if provided and different)
+    if fallback_url and fallback_url != primary_url:
+        try:
+            return http_get(fallback_url, timeout=timeout, retries=retries)
+        except Exception as exc:
+            last_exc = exc
+    # Try additional mirrors
+    for mirror in _RSSHUB_MIRRORS:
+        if mirror in primary_url or mirror in (fallback_url or ""):
+            continue
+        mirror_url = primary_url.replace(_RSSHUB_BASE, mirror).replace(_RSSHUB_FALLBACK, mirror)
+        if mirror_url == primary_url and fallback_url:
+            mirror_url = fallback_url.replace(_RSSHUB_FALLBACK, mirror).replace(_RSSHUB_BASE, mirror)
+        if mirror_url == primary_url or mirror_url == fallback_url:
+            continue
+        try:
+            return http_get(mirror_url, timeout=timeout, retries=retries)
+        except Exception as exc:
+            last_exc = exc
+    if last_exc:
+        raise last_exc
+    raise RuntimeError(f"所有镜像均失败：{primary_url}")
 
 
 def http_post_json(url: str, body: dict[str, Any], headers: dict[str, str], timeout: int = 180) -> dict[str, Any]:
@@ -601,11 +652,13 @@ def refine_classification(
 
 def normalize_priority(value: str) -> str:
     value = clean_text(value)
-    if value in {"P0", "⭐⭐⭐", "三星", "最高"}:
+    # Count star emoji — handle any number of ⭐
+    star_count = value.count("⭐")
+    if star_count >= 3 or value in {"P0", "三星", "最高"}:
         return "P0"
-    if value in {"P1", "⭐⭐", "二星", "中"}:
+    if star_count == 2 or value in {"P1", "二星", "中"}:
         return "P1"
-    if value in {"P2", "⭐", "一星", "低"}:
+    if star_count == 1 or value in {"P2", "一星", "低"}:
         return "P2"
     return ""
 
@@ -722,16 +775,23 @@ def fetch_rss(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -> tuple[lis
     items: list[IntelItem] = []
     failures: list[str] = []
     aliases = company_aliases(config)
+    rsshub_base = _RSSHUB_BASE
+    rsshub_fallback = _RSSHUB_FALLBACK
+    # Determine if this source is RSSHub-based and needs primary/fallback URLs
     for src in config.get("rss_sources", RSS_SOURCES):
         url = src["url"]
         name = src["name"]
+        # For RSSHub URLs, try primary then fallback
+        fallback_url = None
+        if rsshub_base in url and rsshub_fallback != rsshub_base:
+            fallback_url = url.replace(rsshub_base, rsshub_fallback)
         try:
-            raw = http_get(url)
+            raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=_HTTP_TIMEOUT, retries=_RSS_RETRIES)
             batch = parse_rss_items(raw, src, tz, aliases, start)
             items.extend(batch)
         except Exception as exc:
             failures.append(f"RSS（{name}）拉取失败：{exc}")
-        time.sleep(2)  # avoid RSSHub rate-limit
+        time.sleep(1.5)  # avoid RSSHub rate-limit
     return items, failures
 
 
@@ -742,7 +802,8 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
     if os.environ.get("ENABLE_TARGETED_RSS_SEARCH", "1") != "1":
         return [], []
     aliases = company_aliases(config)
-    rsshub_base = os.environ.get("RSSHUB_BASE_URL", "https://rsshub.app").rstrip("/")
+    rsshub_base = _RSSHUB_BASE
+    rsshub_fallback = _RSSHUB_FALLBACK
     targets = iter_unique_companies(config)
     limit = int(os.environ.get("TARGETED_RSS_COMPANY_LIMIT", "0"))
     if limit > 0:
@@ -756,9 +817,11 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
         if not name:
             continue
         keyword = urllib.parse.quote(name)
-        source = {"name": f"东方财富搜索：{name}", "url": f"{rsshub_base}/eastmoney/search/{keyword}"}
+        url = f"{rsshub_base}/eastmoney/search/{keyword}"
+        fallback_url = f"{rsshub_fallback}/eastmoney/search/{keyword}" if rsshub_fallback != rsshub_base else None
+        source = {"name": f"东方财富搜索：{name}", "url": url}
         try:
-            raw = http_get(source["url"], timeout=search_timeout, retries=1)
+            raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=search_timeout, retries=2)
             batch = parse_rss_items(raw, source, tz, aliases, start)
             for item in batch:
                 # Loose match: accept if item.company matches via aliases or is the target
@@ -779,22 +842,127 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
     return items, failures
 
 
-# ── DeepSeek V4 Flash batch intel ──────────────────────────────────────
+# ── Announcement content fetching ──────────────────────────────────────
+
+def fetch_article_content(url: str, timeout: int = 15) -> str:
+    """Fetch full article content from a URL and extract key information.
+
+    Used for announcement-type articles to enrich summary with key details.
+    """
+    try:
+        raw = http_get(url, timeout=timeout, retries=2)
+        html_text = raw.decode("utf-8", errors="replace")
+        # Strip HTML tags, keep text
+        text = re.sub(r"<[^>]+>", " ", html_text)
+        text = html.unescape(text)
+        text = re.sub(r"\s+", " ", text).strip()
+        # Try to extract meaningful content (skip nav, footer noise)
+        # Take the middle portion of the page text (skip header/footer)
+        if len(text) > 500:
+            # Find the main content area - look for the longest continuous text block
+            paragraphs = re.split(r"\n\s*\n", text)
+            main_content = max(paragraphs, key=len).strip() if paragraphs else text
+            # Limit to key info
+            return main_content[:800].strip()
+        return text[:800].strip()
+    except Exception:
+        return ""
+
+
+def enrich_announcement_items(items: list[IntelItem]) -> list[IntelItem]:
+    """For items from official/disclosure sources, fetch full content to enrich summaries."""
+    if not os.environ.get("ENABLE_ANNOUNCEMENT_ENRICH", "1") == "1":
+        return items
+    enriched = []
+    for item in items:
+        scope = source_scope(item.source, item.channel)
+        if scope == "official_disclosure" and item.url and len(item.url) > 10:
+            full_text = fetch_article_content(item.url)
+            if full_text:
+                # Enrich summary with key details from full text
+                existing = item.summary
+                # If existing summary is short, append key info from full text
+                if len(existing) < 100:
+                    # Extract key sentences: look for amounts, dates, company names
+                    key_sentences = []
+                    for sent in re.split(r"[。！？\n]", full_text):
+                        sent = sent.strip()
+                        if any(kw in sent for kw in ["亿元", "万元", "融资", "投资", "收购",
+                                                       "IPO", "上市", "基金", "募资",
+                                                       "合伙人", "战略", "合作"]):
+                            if len(sent) > 10 and sent not in existing:
+                                key_sentences.append(sent)
+                    if key_sentences:
+                        extra = "；".join(key_sentences[:3])
+                        item.summary = shorten(f"{existing} {extra}", 400)
+            enriched.append(item)
+        else:
+            enriched.append(item)
+    return enriched
+
+
+# ── Kimi batch intel (web search) ──────────────────────────────────────
+
+def kimi_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
+    """Call Kimi API with web search support."""
+    api_key = os.environ.get("KIMI_API_KEY", "")
+    base_url = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1").rstrip("/")
+    model = os.environ.get("KIMI_MODEL", "kimi-k2.6")
+    if not api_key:
+        raise RuntimeError("缺少 KIMI_API_KEY")
+    url = f"{base_url}/chat/completions"
+    timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
+    # Kimi / Moonshot uses builtin_function $web_search for web search
+    is_kimi = "moonshot" in base_url or "kimi" in base_url
+    body: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": 16384,
+        "stream": False,
+    }
+    if is_kimi:
+        body["tools"] = [{"type": "builtin_function", "function": {"name": "$web_search"}}]
+        # Kimi K2.6 only supports temperature=1.0
+        body["temperature"] = 1.0
+    try:
+        result = http_post_json(url, body, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
+        # Handle Kimi's tool_calls response: first call returns search results,
+        # we need to feed them back to get the final answer.
+        if is_kimi:
+            choice = result.get("choices", [{}])[0]
+            message = choice.get("message", {})
+            tool_calls = message.get("tool_calls")
+            if tool_calls:
+                # Append assistant's tool_calls response and tool result, then re-call
+                messages.append({"role": "assistant", "content": message.get("content", ""), "tool_calls": tool_calls})
+                for tc in tool_calls:
+                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": tc["function"]["arguments"]})
+                result = http_post_json(url, {**body, "messages": messages}, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
+        usage = result.get("usage", {}) if isinstance(result, dict) else {}
+        cost_tracker.log_api_call(model, usage, status="success")
+        return result
+    except Exception as e:
+        cost_tracker.log_api_call(model, {}, status="error", error_msg=str(e))
+        raise
+
+
+# ── DeepSeek for final writing / analysis (no web search) ──────────────
 
 def deepseek_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
-    """Call DeepSeek V4 Flash via OpenAI-compatible API with web search."""
+    """Call DeepSeek for text generation/analysis — no web search."""
     api_key = os.environ.get("DEEPSEEK_API_KEY", "")
     base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://ai.ctaigw.cn/v1").rstrip("/")
     model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
     if not api_key:
         raise RuntimeError("缺少 DEEPSEEK_API_KEY")
     url = f"{base_url}/chat/completions"
-    timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "120"))
+    timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
     body: dict[str, Any] = {
         "model": model,
         "messages": messages,
         "temperature": temperature,
-        "max_tokens": 16384,
+        "max_tokens": 8192,
         "stream": False,
     }
     try:
@@ -814,54 +982,24 @@ def make_batch_analysis_prompt(
     end: dt.date,
     provider: str,
 ) -> str:
-    """Build a batch prompt for DeepSeek to analyze multiple companies at once."""
+    """Build a batch prompt for Kimi to analyze multiple companies at once."""
     names = "、".join(c["name"] for c in companies)
     return f"""
-请检索并整理以下目标公司在 {start.isoformat()} 至 {end.isoformat()} 的一级市场私募基金管理人竞争情报。
+检索 {start.isoformat()} 至 {end.isoformat()} 目标公司动态，输出JSON数组。
 
-目标名单：{names}
+目标：{names}
+分组：{category}
 
-所属分组：{category}
+动态归类：
+- 基金募集动态（募资/基金/备案/LP）
+- 投资组合与交易动态（融资/IPO/并购/退出）
+- 已投项目投后管理（经营/风险/治理）
+- 组织与团队建设（人事/团队/架构）
+- 品牌与行业影响力（排名/获奖/活动）
+- 战略动向与合作关系（合作/布局/新赛道）
+- 合规与监管动态（监管/处罚/备案）
 
-必须按以下 7 个维度逐公司检索并归类：
-⭐⭐⭐（战略情报）：
-- 基金募集动态：募资进展（首关/终关/目标规模/认缴）、出资人构成、基金架构（合伙制/公司制/存续期/管理费率/业绩报酬）
-- 投资组合与交易动态：新增投资项目（被投企业/赛道/轮次/金额/估值/领投跟投）、项目退出（IPO/并购/老股转让/回购）、投资节奏
-
-⭐⭐（运营情报）：
-- 已投项目投后管理：重点被投企业最新经营指标、后续融资计划、董事会席位、对赌条款履约、风险事件（创始人变更/核心团队流失/诉讼/监管处罚）
-- 组织与团队建设：合伙人级别人事变动、团队扩张/编制调整、新设行业组别、投资委员会变化
-
-⭐（生态情报）：
-- 品牌与行业影响力：行业排名、评选获奖、论坛/峰会活动、研究报告、媒体专访
-- 战略动向与合作关系：战略合作协议、区域布局/新设办公室、新赛道/行业专项基金
-- 合规与监管动态：监管检查、备案进度、合规事件/行政处罚
-
-搜索建议：
-- 对上市公司优先搜索公司名 + 公告/巨潮/交易所
-- 对非上市机构优先搜索：管理人官网、基金业协会、36氪/投资界、清科/投中、政府网站、央媒
-
-输出要求：
-- 只保留 {start.isoformat()} 至 {end.isoformat()} 内的可验证信息
-- 每个公司如果没有任何可核验信息，输出一条占位记录 "暂未发现公开动态"
-- 每条必须有可访问 URL；没有 URL 的不要收录
-- URL 必须是最终原始来源链接
-- 如果 {provider} 当前不能联网检索，请输出 []，不要凭记忆编造
-- 只输出 JSON 数组，不要输出解释
-
-每个对象字段固定为：
-[
-  {{
-    "company": "目标公司名",
-    "title": "动态标题",
-    "url": "原文链接",
-    "source": "来源名称",
-    "published": "YYYY-MM-DD",
-    "summary": "中文80-200字摘要，包含金额/人名/项目名/具体日期；未披露金额写'未披露金额'",
-    "dimension": "基金募集动态 | 投资组合与交易动态 | 已投项目投后管理 | 组织与团队建设 | 品牌与行业影响力 | 战略动向与合作关系 | 合规与监管动态",
-    "priority": "⭐⭐⭐ | ⭐⭐ | ⭐"
-  }}
-]
+要求：只输出JSON数组，每条含company/title/url/source/published/summary/dimension/priority。无可验证信息输出[]。每条必须带可访问URL。
 """
 
 
@@ -930,26 +1068,25 @@ def ai_row_to_item(
     )
 
 
-def fetch_deepseek_batch_intel(
+def fetch_kimi_batch_intel(
     config: dict[str, Any], start: dt.date, end: dt.date, tz: ZoneInfo,
 ) -> tuple[list[IntelItem], list[str]]:
-    """Batch intel retrieval via DeepSeek V4 Flash."""
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        return [], ["DeepSeek 跳过：缺少 DEEPSEEK_API_KEY"]
+    """Batch intel retrieval via Kimi with web search — tier 1 only."""
+    if not os.environ.get("KIMI_API_KEY"):
+        return [], ["Kimi 跳过：缺少 KIMI_API_KEY"]
     items: list[IntelItem] = []
     failures: list[str] = []
     batch_size = int(os.environ.get("BATCH_SIZE", "8"))
     delay = int(os.environ.get("BATCH_SEARCH_DELAY", "2"))
 
     targets = iter_unique_companies(config)
-    # Process tier 1 (核心机构) and tier 2 (活跃机构) with AI;
-    # tier 3 (观察名单) is covered by RSS searches only.
-    tier1 = [(g, c) for g, c in targets if c.get("tier", 3) == 1]
-    tier2 = [(g, c) for g, c in targets if c.get("tier", 3) == 2]
-    ai_targets = tier1 + tier2  # Only AI-search tier 1 + tier 2
+    # Only tier 1 (核心机构) uses Kimi; tier 2+ rely on RSS
+    ai_targets = [(g, c) for g, c in targets if c.get("tier", 3) == 1]
 
     total = len(ai_targets)
-    print(f"DeepSeek Batch: {total} 家公司（tier 1+2），批次大小 {batch_size}", flush=True)
+    if not total:
+        return [], []
+    print(f"Kimi Batch: {total} 家公司（tier 1），批次大小 {batch_size}", flush=True)
 
     # Group by category then batch
     category_map: dict[str, list[dict[str, str]]] = {}
@@ -963,34 +1100,34 @@ def fetch_deepseek_batch_intel(
             batch = companies[i:i + batch_size]
             batch_index += 1
             names_str = "、".join(c["name"] for c in batch)
-            print(f"DeepSeek 批次 {batch_index}/{total // batch_size + 1}：{names_str}", flush=True)
+            print(f"Kimi 批次 {batch_index}/{total // batch_size + 1}：{names_str}", flush=True)
             messages: list[dict[str, Any]] = [
-                {"role": "system", "content": "你是严谨的一级市场私募基金管理人竞争情报分析员。你必须使用 web_search 工具逐一检索每个目标公司的最新动态，每条情报必须附带可访问的原始 URL。没有查到真实信息的公司输出空数组 []。"},
-                {"role": "user", "content": make_batch_analysis_prompt(category, batch, start, end, "DeepSeek V4 Flash")},
+                {"role": "system", "content": "你是私募股权情报分析师。联网搜索各公司近期动态，输出JSON。"},
+                {"role": "user", "content": make_batch_analysis_prompt(category, batch, start, end, os.environ.get("KIMI_MODEL", "AI"))},
             ]
             try:
-                completion = deepseek_chat(messages)
+                completion = kimi_chat(messages)
                 content = completion["choices"][0]["message"].get("content", "")
                 # Extract JSON array
                 json_match = re.search(r"\[.*\]", content, re.DOTALL)
                 if not json_match:
-                    failures.append(f"DeepSeek（{names_str}）未返回 JSON 数组")
+                    failures.append(f"Kimi（{names_str}）未返回 JSON 数组")
                     continue
                 try:
                     rows = json.loads(json_match.group(0))
                 except json.JSONDecodeError:
-                    failures.append(f"DeepSeek（{names_str}）JSON 解析失败")
+                    failures.append(f"Kimi（{names_str}）JSON 解析失败")
                     continue
                 accepted = 0
                 for row in rows:
-                    item = ai_row_to_item(row, "DeepSeek Batch", category, batch, start, tz, batch_aliases)
+                    item = ai_row_to_item(row, "Kimi Batch", category, batch, start, tz, batch_aliases)
                     if item:
                         items.append(item)
                         accepted += 1
                 if rows and accepted == 0:
-                    failures.append(f"DeepSeek（{names_str}）返回 {len(rows)} 条，但未通过校验")
+                    failures.append(f"Kimi（{names_str}）返回 {len(rows)} 条，但未通过校验")
             except Exception as exc:
-                failures.append(f"DeepSeek（{names_str}）拉取失败：{exc}")
+                failures.append(f"Kimi（{names_str}）拉取失败：{exc}")
             time.sleep(delay)
     return items, failures
 
@@ -1001,8 +1138,8 @@ def fetch_amac_filing(
     config: dict[str, Any], start: dt.date, tz: ZoneInfo,
 ) -> tuple[list[IntelItem], list[str]]:
     """Fetch filings/disciplines from AMAC (基金业协会).
-    Default: returns empty, rely on DeepSeek search as fallback."""
-    return [], ["AMAC 直接接口暂不可用，降级至 DeepSeek 联网检索补充"]
+    Default: returns empty, rely on Kimi search as fallback."""
+    return [], ["AMAC 直接接口暂不可用，降级至 Kimi 联网检索补充"]
 
 
 # ── Dedup & validation ─────────────────────────────────────────────────
@@ -1027,19 +1164,67 @@ def validate_item(item: IntelItem, aliases: dict[str, tuple[str, str, str]]) -> 
 
 
 def dedupe(items: list[IntelItem]) -> list[IntelItem]:
-    seen_urls: set[str] = set()
-    seen_titles: set[str] = set()
-    result: list[IntelItem] = []
+    """Deduplicate and merge items that describe the same event.
+
+    Strategy:
+    1. Exact URL dedup (highest priority)
+    2. Title similarity within same company (merge similar items, keep best info)
+    3. Keep the item with the most complete summary when merging
+    """
+    # Phase 1: exact URL dedup
+    seen_urls: dict[str, IntelItem] = {}
     for item in items:
-        if item.url and item.url in seen_urls:
+        if item.url:
+            existing = seen_urls.get(item.url)
+            if existing:
+                # Merge: keep longer summary and higher priority
+                if len(item.summary) > len(existing.summary):
+                    existing.summary = item.summary
+                if PRIORITY_ORDER.get(item.priority, 9) < PRIORITY_ORDER.get(existing.priority, 9):
+                    existing.priority = item.priority
+                    existing.matrix_label = item.matrix_label
+                continue
+            seen_urls[item.url] = item
+
+    # Phase 2: title similarity dedup within same company
+    from difflib import SequenceMatcher
+
+    def title_similarity(a: str, b: str) -> float:
+        a_clean = clean_text(a)[:50]
+        b_clean = clean_text(b)[:50]
+        return SequenceMatcher(None, a_clean, b_clean).ratio()
+
+    url_deduped = list(seen_urls.values())
+    merged: list[IntelItem] = []
+    used: set[int] = set()
+
+    for i, a in enumerate(url_deduped):
+        if i in used:
             continue
-        seen_urls.add(item.url)
-        title_key = clean_text(item.title)[:60]
-        if title_key in seen_titles:
-            continue
-        seen_titles.add(title_key)
-        result.append(item)
-    return result
+        # Look for similar items from the same company
+        best = a
+        used.add(i)
+        for j, b in enumerate(url_deduped):
+            if j in used or i == j:
+                continue
+            if a.company and b.company and a.company != b.company:
+                continue
+            if title_similarity(a.title, b.title) >= 0.65:
+                used.add(j)
+                # Merge: keep longer summary, higher priority, better credibility
+                if len(b.summary) > len(best.summary):
+                    best.summary = b.summary
+                if PRIORITY_ORDER.get(b.priority, 9) < PRIORITY_ORDER.get(best.priority, 9):
+                    best.priority = b.priority
+                    best.matrix_label = b.matrix_label
+                if b.credibility in ("高", "中高") and best.credibility not in ("高", "中高"):
+                    best.credibility = b.credibility
+                # Keep the more complete title
+                if len(b.title) > len(best.title):
+                    best.title = b.title
+        merged.append(best)
+
+    return merged
 
 
 def sort_items(items: list[IntelItem]) -> list[IntelItem]:
@@ -1150,7 +1335,7 @@ def build_report(
 ) -> dict[str, Any]:
     now = dt.datetime.now(tz)
     today_cn = now.strftime("%Y年%m月%d日")
-    subject = f"一级市场私募基金管理人竞争情报周报（{today_cn}）"
+    subject = f"中国TOP100私募股权GP动态周报（{today_cn}）"
     # Count unique companies WITHOUT the AI_SEARCH_COMPANY_LIMIT env var
     target_aliases = company_aliases(config)
     target_count = len(target_aliases)
@@ -1160,15 +1345,6 @@ def build_report(
     channel_counts: dict[str, int] = {}
     for item in items:
         channel_counts[item.channel] = channel_counts.get(item.channel, 0) + 1
-    authority_counts = {"官方/披露": 0, "权威媒体": 0, "补充源": 0}
-    for item in items:
-        score = source_authority_score(item)
-        if score == 0:
-            authority_counts["官方/披露"] += 1
-        elif score == 1:
-            authority_counts["权威媒体"] += 1
-        else:
-            authority_counts["补充源"] += 1
 
     # ── Build HTML body ────────────────────────────────────────────────
     html_parts: list[str] = []
@@ -1215,10 +1391,7 @@ def build_report(
         f"按募集/投资/投后/组织/品牌/战略/合规 7 维度归类。"
     )
     stats = (
-        f"覆盖 {target_count} 家管理人，收录 {len(items)} 条有效情报；"
-        f"官方/披露 {authority_counts['官方/披露']} 条，"
-        f"权威媒体 {authority_counts['权威媒体']} 条，"
-        f"补充源 {authority_counts['补充源']} 条。"
+        f"覆盖 {target_count} 家管理人，收录 {len(items)} 条有效情报。"
     )
 
     # ── Build KPI dashboard ────────────────────────────────────────────
@@ -1235,7 +1408,6 @@ def build_report(
     active_companies = {i.company for i in items if i.company}
     sectors = extract_sectors(items)
     amount_str = extract_disclosed_amounts(items)
-    spotlight_items = extract_spotlight(items, n=4)
     top5 = top_companies(items, n=5)
 
     # Sectors string
@@ -1276,20 +1448,6 @@ def build_report(
        esc(sectors_str), esc(top_co_str),
        p0_count, p1_count, p2_count, target_count))
 
-    # Spotlight cases
-    if spotlight_items:
-        html_parts.append('<div style="padding:12px 16px;background:#fff;border:1px solid #e8e6df;border-radius:6px;margin-bottom:10px;">'
-                          '<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:700;">🔦 重点关注案例</div>')
-        for s_item in spotlight_items:
-            s_title = esc(s_item.title[:80])
-            s_company = esc(s_item.company)
-            s_url = esc_url_attr(s_item.url)
-            star = "⭐⭐⭐" if s_item.priority == "P0" else ("⭐⭐" if s_item.priority == "P1" else "⭐")
-            html_parts.append(
-                '<div style="font-size:13px;line-height:1.6;margin-bottom:4px;">%s <a href="%s" target="_blank" rel="noopener noreferrer" style="color:#1a5276;text-decoration:none;">%s</a> <span style="color:#888;">— %s</span></div>'
-                % (star, s_url, s_title, s_company))
-        html_parts.append('</div>')
-
     # Trend analysis / conclusion
     if analysis_text:
         html_parts.append('<div style="padding:12px 16px;background:#f0ede4;border-radius:6px;font-size:13px;color:#444;line-height:1.8;">'
@@ -1304,85 +1462,56 @@ def build_report(
                        f"活跃机构: {top_co_str} | P0:{p0_count} P1:{p1_count} P2:{p2_count}",
                        ""])
 
-    # ── Summary table
-    if items:
-        html_parts.append('<div style="padding:18px 24px;border-bottom:1px solid #e8e6df;">')
-        html_parts.append('<table role="presentation" cellpadding="0" cellspacing="0" width="100%">')
-        for label in REPORT_GROUP_ORDER:
-            count = len(grouped.get(label, []))
-            html_parts.append(
-                '<tr><td style="padding:8px 0;font-size:14px;color:#444;font-weight:700;">%s</td>'
-                '<td style="padding:8px 0;font-size:14px;color:#888;text-align:right;">%d 条</td></tr>'
-                % (esc(label), count))
-            if count:
-                text_parts.append(f"【{label}】{count} 条")
-        for label, count in authority_counts.items():
-            html_parts.append(
-                '<tr><td style="padding:8px 0;font-size:14px;color:#444;font-weight:700;">%s</td>'
-                '<td style="padding:8px 0;font-size:14px;color:#888;text-align:right;">%d 条</td></tr>'
-                % (esc(label), count))
-        html_parts.append("</table></div>")
-        text_parts.append("")
-
-    # ── Item cards grouped by company within each tier ─────────────────
+    # ── All items as a flat list, grouped by company ─────────────────
     if items:
         html_parts.append('<div style="padding:24px;">')
-        for group_label in REPORT_GROUP_ORDER:
-            group_items = grouped.get(group_label, [])
-            if not group_items:
-                continue
+        # Build company map from all items (flat, no tier grouping)
+        company_map: dict[str, list[IntelItem]] = {}
+        for it in items:
+            company_map.setdefault(it.company, []).append(it)
+        for company_name in sorted(company_map.keys(), key=lambda x: (0 if x == "德同资本" else 1, x)):
+            company_items = company_map[company_name]
             html_parts.append(
-                '<div style="margin-bottom:20px;"><h2 style="font-size:18px;color:#111;'
-                'margin:0 0 12px;padding-bottom:6px;border-bottom:2px solid #e8e6df;">%s</h2></div>'
-                % esc(group_label))
-            text_parts.append(f"── {group_label} ──")
-            # Sub-group by company within this tier
-            company_map: dict[str, list[IntelItem]] = {}
-            for it in group_items:
-                company_map.setdefault(it.company, []).append(it)
-            for company_name in sorted(company_map.keys()):
-                company_items = company_map[company_name]
+                '<div style="margin:18px 0 6px;font-size:15px;font-weight:700;color:#1a5276;">'
+                '%s <span style="font-size:12px;color:#888;font-weight:400;">(%d 条)</span></div>'
+                % (esc(company_name), len(company_items)))
+            text_parts.append(f"  【{company_name}】{len(company_items)} 条")
+            for item in company_items:
+                url_href = esc_url_attr(item.url)
+                url_display = esc(item.url)
+                title = esc(item.title)
+                source = esc(item.source or "")
+                summary = bold_company(esc(item.summary or ""), esc(item.company))
+                pub_str = fmt_published(item.published)
+                prio = item.priority
+                dim = esc(item.dimension)
+                label = esc(item.matrix_label)
+                cred = item.credibility
+                verif = esc(item.verification_notes)
+
+                star = "⭐⭐⭐" if prio == "P0" else ("⭐⭐" if prio == "P1" else "⭐")
+                badge = cred_badge(cred)
+
+                verif_html = ""
+                if verif:
+                    verif_html = f'<div style="margin-top:6px;font-size:12px;color:#b35900;">⚠ 待核实：{verif}</div>'
+
                 html_parts.append(
-                    '<div style="margin:18px 0 6px;font-size:15px;font-weight:700;color:#1a5276;">'
-                    '%s <span style="font-size:12px;color:#888;font-weight:400;">(%d 条)</span></div>'
-                    % (esc(company_name), len(company_items)))
-                text_parts.append(f"  【{company_name}】{len(company_items)} 条")
-                for item in company_items:
-                    url_href = esc_url_attr(item.url)
-                    url_display = esc(item.url)
-                    title = esc(item.title)
-                    source = esc(item.source or "")
-                    summary = bold_company(esc(item.summary or ""), esc(item.company))
-                    pub_str = fmt_published(item.published)
-                    prio = item.priority
-                    dim = esc(item.dimension)
-                    label = esc(item.matrix_label)
-                    cred = item.credibility
-                    verif = esc(item.verification_notes)
+                    '<div style="background:#fbfaf7;border:1px solid #e8e6df;border-radius:8px;padding:14px 16px;margin-bottom:10px;">'
+                    '<div style="font-size:13px;color:#888;margin-bottom:4px;">%s · %s %s</div>'
+                    '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">'
+                    '<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#1a5276;text-decoration:none;">%s</a></div>'
+                    '<div style="font-size:13px;color:#555;line-height:1.65;">%s</div>'
+                    '<div style="margin-top:8px;display:inline-block;background:#f0ede4;border-radius:4px;padding:2px 10px;font-size:12px;color:#777;">%s %s %s</div>'
+                    '%s'
+                    '</div>'
+                    % (pub_str, esc(source), badge, url_href, title, summary, star, dim, label, verif_html))
 
-                    star = "⭐⭐⭐" if prio == "P0" else ("⭐⭐" if prio == "P1" else "⭐")
-                    badge = cred_badge(cred)
-
-                    verif_html = ""
-                    if verif:
-                        verif_html = f'<div style="margin-top:6px;font-size:12px;color:#b35900;">⚠ 待核实：{verif}</div>'
-
-                    html_parts.append(
-                        '<div style="background:#fbfaf7;border:1px solid #e8e6df;border-radius:8px;padding:14px 16px;margin-bottom:10px;">'
-                        '<div style="font-size:13px;color:#888;margin-bottom:4px;">%s · %s %s</div>'
-                        '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">'
-                        '<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#1a5276;text-decoration:none;">%s</a></div>'
-                        '<div style="font-size:13px;color:#555;line-height:1.65;">%s</div>'
-                        '<div style="margin-top:8px;display:inline-block;background:#f0ede4;border-radius:4px;padding:2px 10px;font-size:12px;color:#777;">%s %s %s</div>'
-                        '%s'
-                        '</div>'
-                        % (pub_str, esc(source), badge, url_href, title, summary, star, dim, label, verif_html))
-
-                    text_parts.append(
-                        f"     {star} {title}\n"
-                        f"       {source} · {pub_str} · 可信度:{cred}\n"
-                        f"       {summary}\n"
-                        f"       {url_display}\n")
+                text_parts.append(
+                    f"     {star} {title}\n"
+                    f"       {source} · {pub_str} · 可信度:{cred}\n"
+                    f"       {summary}\n"
+                    f"       {url_display}\n")
         html_parts.append("</div>")
     else:
         html_parts.append(
@@ -1393,20 +1522,13 @@ def build_report(
     channel_line = "、".join(
         f"{name} {count} 条" for name, count in sorted(channel_counts.items())
     ) or "暂无有效来源条目"
-    failures_note = ""
-    if failures:
-        failures_note = "<br><br><strong style='color:#222;'>采集备注</strong><br>" + esc("；".join(failures[:8]))
-        if len(failures) > 8:
-            failures_note += f"<br>…还有 {len(failures) - 8} 条"
-
     # ── Stats footer ────────────────────────────────────────────────
     html_parts.append(
         '<div style="padding:20px 24px;background:#fbfaf7;font-size:12px;line-height:1.7;color:#888;">'
         '<strong style="color:#222;">数据口径</strong><br>%s %s'
         '<br><br><strong style="color:#222;">本次实际来源</strong><br>%s'
-        '%s'
         '</div>'
-        % (esc(intro), esc(stats), esc(channel_line), failures_note))
+        % (esc(intro), esc(stats), esc(channel_line)))
     text_parts.append("")
     text_parts.append(f"数据口径：{intro} {stats}")
     text_parts.append(f"实际来源：{channel_line}")
@@ -1607,13 +1729,13 @@ def main() -> int:
     rss_items, rss_failures = fetch_rss(config, start, tz)
     # Phase 2: Targeted company search via RSSHub
     targeted_items, targeted_failures = fetch_company_search(config, start, tz)
-    # Phase 3: DeepSeek V4 Flash batch intel
-    deepseek_items, deepseek_failures = fetch_deepseek_batch_intel(config, start, today, tz)
-    # Phase 4: AMAC filing (fallback to DeepSeek)
+    # Phase 3: Kimi batch intel
+    kimi_items, kimi_failures = fetch_kimi_batch_intel(config, start, today, tz)
+    # Phase 4: AMAC filing (fallback to Kimi)
     amac_items, amac_failures = fetch_amac_filing(config, start, tz)
 
-    items = sort_items(dedupe(rss_items + targeted_items + deepseek_items + amac_items))
-    failures = rss_failures + targeted_failures + deepseek_failures + amac_failures
+    items = sort_items(dedupe(rss_items + targeted_items + kimi_items + amac_items))
+    failures = rss_failures + targeted_failures + kimi_failures + amac_failures
 
     # Fill credibility & verification notes
     for item in items:
@@ -1645,6 +1767,9 @@ def main() -> int:
     if url_invalid:
         failures.append(f"URL验证过滤 {len(url_invalid)} 条：" + "; ".join(url_invalid[:10]))
     items = url_validated
+
+    # Enrich announcement items with full content
+    items = enrich_announcement_items(items)
 
     if args.max_items > 0:
         items = items[: args.max_items]

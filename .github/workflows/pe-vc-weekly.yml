@@ -2,8 +2,8 @@ name: PE/VC Competitive Intelligence Daily
 
 on:
   schedule:
-    # Beijing 8:00 = UTC 0:00 — daily collection starts
-    - cron: "0 0 * * *"
+    # Beijing 7:30 = UTC 23:30 (previous day) — collection starts
+    - cron: "30 23 * * *"
   workflow_dispatch:
 
 jobs:
@@ -16,21 +16,27 @@ jobs:
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       SMTP_FROM: ${{ secrets.SMTP_FROM }}
-      RECIPIENTS: ${{ vars.RECIPIENTS || '' }}
+      RECIPIENTS: readylinoffice@gmail.com
+      KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+      KIMI_BASE_URL: ${{ vars.KIMI_BASE_URL || 'https://api.moonshot.cn/v1' }}
+      KIMI_MODEL: ${{ vars.KIMI_MODEL || 'kimi-k2.6' }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
       DEEPSEEK_BASE_URL: ${{ vars.DEEPSEEK_BASE_URL || 'https://ai.ctaigw.cn/v1' }}
       DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-v4-flash' }}
       RSSHUB_BASE_URL: http://127.0.0.1:1200
-      HTTP_TIMEOUT: "12"
+      HTTP_TIMEOUT: "20"
       ENABLE_TARGETED_RSS_SEARCH: "1"
       TARGETED_RSS_COMPANY_LIMIT: "0"
       MAX_ITEMS: "0"
       EMAIL_CHUNK_SIZE: "25"
       EMAIL_DELIVERY_MODE: "auto"
-      AI_HTTP_TIMEOUT: "60"
+      AI_HTTP_TIMEOUT: "3600"
       BATCH_SIZE: "8"
       BATCH_SEARCH_DELAY: "2"
       SEARCH_DAYS: "90"
+      RSS_RETRIES: "3"
+      RSS_FALLBACK_URL: "https://rsshub.app"
+      ALLOW_EMPTY_REPORT: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,7 +83,7 @@ jobs:
         run: |
           python3 pe_vc_weekly_report.py \
             --send-existing \
-            --recipients "${RECIPIENTS}"
+            --recipients "readylinoffice@gmail.com"
 
       - name: Upload generated report artifacts
         if: always()

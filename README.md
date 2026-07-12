@@ -53,7 +53,15 @@ cp .env.example .env
 
 163 邮箱通常需要开启 SMTP 服务，并使用"授权码"而不是登录密码。
 
-DeepSeek V4 Flash 通过 OpenAI 兼容代理端点调用，在 `.env` 中填入：
+Kimi (Moonshot) 负责联网搜索情报，在 `.env` 中填入：
+
+```bash
+KIMI_API_KEY=sk-your-kimi-api-key
+KIMI_BASE_URL=https://api.moonshot.cn/v1
+KIMI_MODEL=kimi-k2.6
+```
+
+DeepSeek 负责最终趋势分析写作，在 `.env` 中填入：
 
 ```bash
 DEEPSEEK_API_KEY=sk-your-deepseek-api-key
@@ -98,14 +106,14 @@ python3 pe_vc_weekly_report.py --send-existing
 | `SMTP_USER` | 163 发件邮箱地址 |
 | `SMTP_PASSWORD` | 163 SMTP 授权码 |
 | `SMTP_FROM` | 发件邮箱地址，通常与 `SMTP_USER` 一致 |
-| `DEEPSEEK_API_KEY` | DeepSeek V4 Flash API Key |
+| `KIMI_API_KEY` | Kimi API Key |
 
 可选变量：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DEEPSEEK_BASE_URL` | `https://ai.ctaigw.cn/v1` | DeepSeek 代理端点 |
-| `DEEPSEEK_MODEL` | `deepseek-v4-flash` | 模型名 |
+| `KIMI_BASE_URL` | `https://api.moonshot.cn/v1` | Kimi 端点 |
+| `KIMI_MODEL` | `kimi-k2.6` | 模型名 |
 | `BATCH_SIZE` | `8` | 每批检索公司数 |
 | `BATCH_SEARCH_DELAY` | `2` | 批间延迟秒数 |
 | `SEARCH_DAYS` | `30` | 检索窗口天数 |
