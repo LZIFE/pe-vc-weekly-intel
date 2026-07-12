@@ -795,7 +795,7 @@ def fetch_rss(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -> tuple[lis
             fallback_url = url.replace(rsshub_base, rsshub_fallback)
         try:
             raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=_HTTP_TIMEOUT, retries=_RSS_RETRIES)
-            batch = parse_rss_items(raw, src, tz, aliases, start)
+            batch = parse_rss_items(raw, src, tz, aliases, start, lenient=True)
             items.extend(batch)
         except Exception as exc:
             failures.append(f"RSS（{name}）拉取失败：{exc}")
