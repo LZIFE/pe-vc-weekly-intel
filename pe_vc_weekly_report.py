@@ -282,7 +282,7 @@ _build_source_scope_map()
 def source_scope(source_name: str, channel: str = "") -> str:
     if channel == "公告":
         return "official_disclosure"
-    if channel in {"Kimi Batch", "Kimi Search", "搜索RSS"}:
+    if channel in {"AI Search", "搜索RSS"}:
         return "third_party"
     return SOURCE_SCOPE_MAP.get(source_name, "third_party")
 
@@ -926,19 +926,17 @@ def enrich_announcement_items(items: list[IntelItem]) -> list[IntelItem]:
     return enriched
 
 
-# ── Kimi batch intel (web search) ──────────────────────────────────────
+# ── AI Search batch intel (DeepSeek official) ───────────────────────────
 
-def kimi_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
-    """Call Kimi API with web search support."""
-    api_key = os.environ.get("KIMI_API_KEY", "")
-    base_url = os.environ.get("KIMI_BASE_URL", "https://api.moonshot.cn/v1").rstrip("/")
-    model = os.environ.get("KIMI_MODEL", "kimi-k2.6")
+def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
+    """Call AI model for search/intel — uses AI_SEARCH_* env vars."""
+    api_key = os.environ.get("AI_SEARCH_API_KEY", "")
+    base_url = os.environ.get("AI_SEARCH_BASE_URL", "https://api.deepseek.com/v1").rstrip("/")
+    model = os.environ.get("AI_SEARCH_MODEL", "deepseek-v4-flash")
     if not api_key:
-        raise RuntimeError("缺少 KIMI_API_KEY")
+        raise RuntimeError("缺少 AI_SEARCH_API_KEY")
     url = f"{base_url}/chat/completions"
     timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
-    # Kimi / Moonshot uses builtin_function $web_search for web search
-    is_kimi = "moonshot" in base_url or "kimi" in base_url
     body: dict[str, Any] = {
         "model": model,
         "messages": messages,
@@ -946,24 +944,8 @@ def kimi_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[
         "max_tokens": 16384,
         "stream": False,
     }
-    if is_kimi:
-        body["tools"] = [{"type": "builtin_function", "function": {"name": "$web_search"}}]
-        # Kimi K2.6 only supports temperature=1.0
-        body["temperature"] = 1.0
     try:
         result = http_post_json(url, body, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
-        # Handle Kimi's tool_calls response: first call returns search results,
-        # we need to feed them back to get the final answer.
-        if is_kimi:
-            choice = result.get("choices", [{}])[0]
-            message = choice.get("message", {})
-            tool_calls = message.get("tool_calls")
-            if tool_calls:
-                # Append assistant's tool_calls response and tool result, then re-call
-                messages.append({"role": "assistant", "content": message.get("content", ""), "tool_calls": tool_calls})
-                for tc in tool_calls:
-                    messages.append({"role": "tool", "tool_call_id": tc["id"], "content": tc["function"]["arguments"]})
-                result = http_post_json(url, {**body, "messages": messages}, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
         usage = result.get("usage", {}) if isinstance(result, dict) else {}
         cost_tracker.log_api_call(model, usage, status="success")
         return result
@@ -1007,7 +989,7 @@ def make_batch_analysis_prompt(
     end: dt.date,
     provider: str,
 ) -> str:
-    """Build a batch prompt for Kimi to analyze multiple companies at once."""
+    """Build a batch prompt for AI to analyze multiple companies at once."""
     names = "、".join(c["name"] for c in companies)
     return f"""
 检索 {start.isoformat()} 至 {end.isoformat()} 目标公司动态，输出JSON数组。
@@ -1093,25 +1075,26 @@ def ai_row_to_item(
     )
 
 
-def fetch_kimi_batch_intel(
+def fetch_ai_search_batch_intel(
     config: dict[str, Any], start: dt.date, end: dt.date, tz: ZoneInfo,
 ) -> tuple[list[IntelItem], list[str]]:
-    """Batch intel retrieval via Kimi with web search — tier 1 only."""
-    if not os.environ.get("KIMI_API_KEY"):
-        return [], ["Kimi 跳过：缺少 KIMI_API_KEY"]
+    """Batch intel retrieval via AI search — tier 1 only."""
+    if not os.environ.get("AI_SEARCH_API_KEY"):
+        return [], ["AI Search 跳过：缺少 AI_SEARCH_API_KEY"]
     items: list[IntelItem] = []
     failures: list[str] = []
     batch_size = int(os.environ.get("BATCH_SIZE", "8"))
     delay = int(os.environ.get("BATCH_SEARCH_DELAY", "2"))
+    model_name = os.environ.get("AI_SEARCH_MODEL", "deepseek-v4-flash")
 
     targets = iter_unique_companies(config)
-    # Only tier 1 (核心机构) uses Kimi; tier 2+ rely on RSS
+    # Only tier 1 (核心机构) uses AI; tier 2+ rely on RSS
     ai_targets = [(g, c) for g, c in targets if c.get("tier", 3) == 1]
 
     total = len(ai_targets)
     if not total:
         return [], []
-    print(f"Kimi Batch: {total} 家公司（tier 1），批次大小 {batch_size}", flush=True)
+    print(f"AI Search Batch: {total} 家公司（tier 1），批次大小 {batch_size}", flush=True)
 
     # Group by category then batch
     category_map: dict[str, list[dict[str, str]]] = {}
@@ -1125,34 +1108,34 @@ def fetch_kimi_batch_intel(
             batch = companies[i:i + batch_size]
             batch_index += 1
             names_str = "、".join(c["name"] for c in batch)
-            print(f"Kimi 批次 {batch_index}/{total // batch_size + 1}：{names_str}", flush=True)
+            print(f"AI Search 批次 {batch_index}/{total // batch_size + 1}：{names_str}", flush=True)
             messages: list[dict[str, Any]] = [
                 {"role": "system", "content": "你是私募股权情报分析师。联网搜索各公司近期动态，输出JSON。"},
-                {"role": "user", "content": make_batch_analysis_prompt(category, batch, start, end, os.environ.get("KIMI_MODEL", "AI"))},
+                {"role": "user", "content": make_batch_analysis_prompt(category, batch, start, end, model_name)},
             ]
             try:
-                completion = kimi_chat(messages)
+                completion = ai_search_chat(messages)
                 content = completion["choices"][0]["message"].get("content", "")
                 # Extract JSON array
                 json_match = re.search(r"\[.*\]", content, re.DOTALL)
                 if not json_match:
-                    failures.append(f"Kimi（{names_str}）未返回 JSON 数组")
+                    failures.append(f"AI Search（{names_str}）未返回 JSON 数组")
                     continue
                 try:
                     rows = json.loads(json_match.group(0))
                 except json.JSONDecodeError:
-                    failures.append(f"Kimi（{names_str}）JSON 解析失败")
+                    failures.append(f"AI Search（{names_str}）JSON 解析失败")
                     continue
                 accepted = 0
                 for row in rows:
-                    item = ai_row_to_item(row, "Kimi Batch", category, batch, start, tz, batch_aliases)
+                    item = ai_row_to_item(row, "AI Search", category, batch, start, tz, batch_aliases)
                     if item:
                         items.append(item)
                         accepted += 1
                 if rows and accepted == 0:
-                    failures.append(f"Kimi（{names_str}）返回 {len(rows)} 条，但未通过校验")
+                    failures.append(f"AI Search（{names_str}）返回 {len(rows)} 条，但未通过校验")
             except Exception as exc:
-                failures.append(f"Kimi（{names_str}）拉取失败：{exc}")
+                failures.append(f"AI Search（{names_str}）拉取失败：{exc}")
             time.sleep(delay)
     return items, failures
 
@@ -1163,8 +1146,8 @@ def fetch_amac_filing(
     config: dict[str, Any], start: dt.date, tz: ZoneInfo,
 ) -> tuple[list[IntelItem], list[str]]:
     """Fetch filings/disciplines from AMAC (基金业协会).
-    Default: returns empty, rely on Kimi search as fallback."""
-    return [], ["AMAC 直接接口暂不可用，降级至 Kimi 联网检索补充"]
+    Default: returns empty, rely on AI search as fallback."""
+    return [], ["AMAC 直接接口暂不可用，降级至 AI 联网检索补充"]
 
 
 # ── Dedup & validation ─────────────────────────────────────────────────
@@ -1757,13 +1740,13 @@ def main() -> int:
     rss_items, rss_failures = fetch_rss(config, start, tz)
     # Phase 2: Targeted company search via RSSHub
     targeted_items, targeted_failures = fetch_company_search(config, start, tz)
-    # Phase 3: Kimi batch intel
-    kimi_items, kimi_failures = fetch_kimi_batch_intel(config, start, today, tz)
-    # Phase 4: AMAC filing (fallback to Kimi)
+    # Phase 3: AI Search batch intel (DeepSeek official)
+    ai_search_items, ai_search_failures = fetch_ai_search_batch_intel(config, start, today, tz)
+    # Phase 4: AMAC filing (fallback to AI Search)
     amac_items, amac_failures = fetch_amac_filing(config, start, tz)
 
-    items = sort_items(dedupe(rss_items + targeted_items + kimi_items + amac_items))
-    failures = rss_failures + targeted_failures + kimi_failures + amac_failures
+    items = sort_items(dedupe(rss_items + targeted_items + ai_search_items + amac_items))
+    failures = rss_failures + targeted_failures + ai_search_failures + amac_failures
 
     # Fill credibility & verification notes
     for item in items:
