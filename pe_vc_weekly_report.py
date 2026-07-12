@@ -690,14 +690,22 @@ def parse_rss_items(
             return None
         company = infer_company(f"{title} {summary}", aliases, source_name)
         if not company:
-            return None
+            # In lenient mode for generic RSS, keep PE/VC-relevant news as 行业动态
+            if not lenient:
+                return None
+            text_lower = (title + summary).lower()
+            pevc_signals = ["融资", "基金", "募资", "创投", "股权投资", "私募", "IPO", "上市",
+                          "并购", "GP", "LP", "VC", "PE", "投资", "退出", "首关", "终关"]
+            if any(s in text_lower for s in pevc_signals):
+                company = "行业/综合"
+            else:
+                return None
         text = f"{title} {summary}"
         classified = classify_matrix(text)
         if classified:
             priority, dimension, label = classified
         else:
             # Lenient mode: allow items through even without strong matrix keyword matches
-            # Used for 东方财富 targeted searches where valid news may lack specific dimension keywords
             if not lenient:
                 return None
             priority = "P2"
