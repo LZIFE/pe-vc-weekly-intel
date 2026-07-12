@@ -668,6 +668,7 @@ def normalize_priority(value: str) -> str:
 def parse_rss_items(
     content: bytes, source: dict[str, str], tz: ZoneInfo,
     aliases: dict[str, tuple[str, str, str]], start: dt.date,
+    lenient: bool = False,
 ) -> list[IntelItem]:
     items: list[IntelItem] = []
     try:
@@ -692,9 +693,16 @@ def parse_rss_items(
             return None
         text = f"{title} {summary}"
         classified = classify_matrix(text)
-        if not classified:
-            return None
-        priority, dimension, label = classified
+        if classified:
+            priority, dimension, label = classified
+        else:
+            # Lenient mode: allow items through even without strong matrix keyword matches
+            # Used for 东方财富 targeted searches where valid news may lack specific dimension keywords
+            if not lenient:
+                return None
+            priority = "P2"
+            dimension = "品牌与行业影响力"
+            label = PRIORITY_NAMES.get("P2", "品牌声量与常态化市场监测")
         scope = source_scope(source_name)
         priority, dimension, label = refine_classification(
             priority, dimension, label, text, company, scope
@@ -822,7 +830,7 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
         source = {"name": f"东方财富搜索：{name}", "url": url}
         try:
             raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=search_timeout, retries=2)
-            batch = parse_rss_items(raw, source, tz, aliases, start)
+            batch = parse_rss_items(raw, source, tz, aliases, start, lenient=True)
             for item in batch:
                 # Loose match: accept if item.company matches via aliases or is the target
                 if item.company == name:
@@ -1209,7 +1217,7 @@ def dedupe(items: list[IntelItem]) -> list[IntelItem]:
                 continue
             if a.company and b.company and a.company != b.company:
                 continue
-            if title_similarity(a.title, b.title) >= 0.65:
+            if title_similarity(a.title, b.title) >= 0.80:
                 used.add(j)
                 # Merge: keep longer summary, higher priority, better credibility
                 if len(b.summary) > len(best.summary):
@@ -1335,6 +1343,9 @@ def build_report(
 ) -> dict[str, Any]:
     now = dt.datetime.now(tz)
     today_cn = now.strftime("%Y年%m月%d日")
+    lookback = start_lookback_days(config)
+    start_date = now.date() - dt.timedelta(days=lookback)
+    date_range = f"{start_date.isoformat()} 至 {now.date().isoformat()}"
     subject = f"中国TOP100私募股权GP动态周报（{today_cn}）"
     # Count unique companies WITHOUT the AI_SEARCH_COMPANY_LIMIT env var
     target_aliases = company_aliases(config)
@@ -1387,7 +1398,7 @@ def build_report(
     conclusion = "、".join(conclusion_parts) if conclusion_parts else "本周未采集到高可信度动态"
 
     intro = (
-        f"检索近 {start_lookback_days(config)} 天一级市场私募基金管理人动态，"
+        f"检索 {date_range} 一级市场私募基金管理人动态，"
         f"按募集/投资/投后/组织/品牌/战略/合规 7 维度归类。"
     )
     stats = (
@@ -1545,7 +1556,7 @@ def build_report(
         "recipients": recipients,
         "html_body": "\n".join(html_parts),
         "plain_text": "\n".join(text_parts),
-        "summary": f"覆盖 {target_count} 家管理人，本次去重后收录 {len(items)} 条有效情报。",
+        "summary": f"覆盖 {target_count} 家管理人，本次去重后收录 {len(items)} 条有效情报 ({date_range})。",
         "channel_counts": channel_counts,
         "items": [asdict(item) for item in items],
         "failures": failures,
