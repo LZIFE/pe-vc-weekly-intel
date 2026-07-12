@@ -840,7 +840,16 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
             raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=search_timeout, retries=2)
             batch = parse_rss_items(raw, source, tz, aliases, start, lenient=True)
             for item in batch:
-                # Loose match: accept if item.company matches via aliases or is the target
+                # Accept if the item's text directly mentions the search target (or its aliases)
+                # This handles cases where infer_company picks a different GP mentioned alongside
+                text = f"{item.title} {item.summary}"
+                target_aliases = {name} | {a for a, (c, _, _) in aliases.items() if c == name}
+                mentioned_target = any(a.lower() in text.lower() for a in target_aliases if len(a) >= 2)
+                if mentioned_target:
+                    item.company = name  # force correct company
+                    item.channel = "搜索RSS"
+                    items.append(item)
+                    continue
                 if item.company == name:
                     pass  # exact match
                 elif item.company in aliases:
