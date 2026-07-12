@@ -15,6 +15,26 @@
   },
   "rss_sources": [
     {
+      "name": "投资界",
+      "url": "https://rsshub.rssforever.com/pedaily/news",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "36氪创投",
+      "url": "https://rsshub.rssforever.com/36kr/motif/startup",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "36氪快讯",
+      "url": "https://rsshub.rssforever.com/36kr/news/latest",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "财联社公司深度",
+      "url": "https://rsshub.rssforever.com/cls/depth/1005",
+      "category": "财经媒体"
+    },
+    {
       "name": "财联社公告电报",
       "url": "https://rsshub.rssforever.com/cls/telegraph/announcement",
       "category": "财经媒体"
@@ -25,14 +45,14 @@
       "category": "财经媒体"
     },
     {
-      "name": "人民网财经",
-      "url": "https://rsshub.rssforever.com/people/finance",
-      "category": "央媒/权威"
+      "name": "证券时报金融",
+      "url": "https://rsshub.rssforever.com/stcn/article/list/finance",
+      "category": "财经媒体"
     },
     {
-      "name": "36氪快讯",
-      "url": "https://rsshub.rssforever.com/36kr/news/latest",
-      "category": "一级市场资讯"
+      "name": "新浪财经创投",
+      "url": "https://rsshub.rssforever.com/sina/finance/rollnews/2681",
+      "category": "财经媒体"
     },
     {
       "name": "新浪财经股市",
@@ -40,19 +60,34 @@
       "category": "财经媒体"
     },
     {
-      "name": "东方财富搜索_红杉中国",
-      "url": "https://rsshub.rssforever.com/eastmoney/search/%E7%BA%A2%E6%9D%89%E4%B8%AD%E5%9B%BD",
-      "category": "定向搜索"
+      "name": "21财经公司动态",
+      "url": "https://rsshub.rssforever.com/21caijing/channel/%E5%85%AC%E5%8F%B8/%E5%8A%A8%E6%80%81",
+      "category": "财经媒体"
     },
     {
-      "name": "东方财富搜索_高瓴投资",
-      "url": "https://rsshub.rssforever.com/eastmoney/search/%E9%AB%98%E7%93%A4%E6%8A%95%E8%B5%84",
-      "category": "定向搜索"
+      "name": "21财经公告精选",
+      "url": "https://rsshub.rssforever.com/21caijing/channel/%E6%8A%95%E8%B5%84%E9%80%9A/%E5%85%AC%E5%91%8A%E7%B2%BE%E9%80%89",
+      "category": "财经媒体"
     },
     {
-      "name": "东方财富搜索_深创投",
-      "url": "https://rsshub.rssforever.com/eastmoney/search/%E6%B7%B1%E5%88%9B%E6%8A%95",
-      "category": "定向搜索"
+      "name": "21财经公司洞察",
+      "url": "https://rsshub.rssforever.com/21caijing/channel/%E6%8A%95%E8%B5%84%E9%80%9A/%E5%85%AC%E5%8F%B8%E6%B4%9E%E5%AF%9F",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财经网滚动新闻",
+      "url": "https://rsshub.rssforever.com/caijing/roll",
+      "category": "财经媒体"
+    },
+    {
+      "name": "人民网财经",
+      "url": "https://rsshub.rssforever.com/people/finance",
+      "category": "央媒/权威"
+    },
+    {
+      "name": "新华网财经",
+      "url": "https://rsshub.rssforever.com/rss/xinhuanet/fortune",
+      "category": "央媒/权威"
     }
   ],
   "categories": {
