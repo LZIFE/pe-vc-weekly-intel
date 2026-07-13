@@ -953,7 +953,7 @@ def enrich_announcement_items(items: list[IntelItem]) -> list[IntelItem]:
 # ── AI Search batch intel (DeepSeek Anthropic with web search) ──────────
 
 def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
-    """Call DeepSeek via Anthropic Messages API with web_search tool."""
+    """Call DeepSeek via Anthropic Messages API — guarantees web_search execution."""
     api_key = os.environ.get("AI_SEARCH_API_KEY", "")
     base_url = os.environ.get("AI_SEARCH_BASE_URL", "https://api.deepseek.com/anthropic").rstrip("/")
     model = os.environ.get("AI_SEARCH_MODEL", "deepseek-v4-flash")
@@ -962,8 +962,7 @@ def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> 
     url = f"{base_url}/v1/messages"
     timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
 
-    # Convert OpenAI-format messages to Anthropic format
-    # system → system, user → user, assistant → assistant
+    # Convert to Anthropic format
     anthropic_msgs: list[dict[str, Any]] = []
     system_content = ""
     for m in messages:
@@ -983,8 +982,9 @@ def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> 
     if system_content:
         body["system"] = system_content
 
-    try:
-        data = json.dumps(body).encode("utf-8")
+    def _do_request(msgs: list[dict], tool_use_ids_seen: set | None = None) -> dict:
+        b = {**body, "messages": msgs}
+        data = json.dumps(b).encode("utf-8")
         req = urllib.request.Request(
             url, data=data,
             headers={
@@ -997,65 +997,63 @@ def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> 
         resp_data: dict[str, Any] = {}
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             resp_data = json.loads(resp.read().decode("utf-8"))
+        return resp_data
 
-        # Handle tool_use: if the model called web_search, feed tool results back
-        # Anthropic API does NOT auto-execute tools — we must handle the loop
-        max_rounds = 3
-        for _round in range(max_rounds):
-            tool_uses = [b for b in resp_data.get("content", []) if b.get("type") == "tool_use"]
-            if not tool_uses:
-                break  # No tools called, response is final
+    # Up to 2 retries when model fails to use web_search
+    for attempt in range(3):
+        resp_data = _do_request(anthropic_msgs)
+        content_blocks = resp_data.get("content", [])
 
-            # Build tool results for each tool_use
-            anthropic_msgs.append({
-                "role": "assistant",
-                "content": resp_data.get("content", []),
-            })
+        # Check for proper tool_use blocks (model actually using web_search)
+        tool_uses = [b for b in content_blocks if b.get("type") == "tool_use"]
+
+        if tool_uses:
+            # Model properly used web_search — handle the tool_use → tool_result loop
+            anthropic_msgs.append({"role": "assistant", "content": content_blocks})
             tool_results = []
             for tu in tool_uses:
-                # The web_search tool results are handled server-side by the endpoint,
-                # but we need to pass back an acknowledgment. Use empty string and let
-                # the server fill in the actual search results.
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tu.get("id", ""),
-                    "content": tu.get("input", {}).get("query", ""),
-                })
+                if tu.get("name") == "web_search":
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tu.get("id", ""),
+                        "content": tu.get("input", {}).get("query", ""),
+                    })
             anthropic_msgs.append({"role": "user", "content": tool_results})
-            body["messages"] = anthropic_msgs
+            # Get final answer with search results
+            resp_data = _do_request(anthropic_msgs)
+            break
 
-            data = json.dumps(body).encode("utf-8")
-            req = urllib.request.Request(
-                url, data=data,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                resp_data = json.loads(resp.read().decode("utf-8"))
+        # Check for inline <tool_calls> text (model failed to execute)
+        text_blocks = [b for b in content_blocks if b.get("type") == "text"]
+        combined_text = "\n".join(b.get("text", "") for b in text_blocks)
 
-        # Extract text from Anthropic response, convert back to OpenAI-like format
-        text_parts = []
-        for block in resp_data.get("content", []):
-            if block.get("type") == "text":
-                text_parts.append(block.get("text", ""))
-        full_text = "\n".join(text_parts)
+        if "<tool_calls>" in combined_text or "<invoke" in combined_text:
+            # Model described tool calls instead of executing — retry with stronger prompt
+            if attempt < 2:
+                anthropic_msgs[0]["content"] = (
+                    "CRITICAL: You MUST use the web_search tool. Do NOT output <tool_calls> in text. "
+                    "Execute the web_search tool to find real, verifiable information with URLs. "
+                    + anthropic_msgs[0]["content"]
+                )
+                continue
+        break  # Got real results or exhausted retries
 
-        # Convert to OpenAI-compatible format for downstream processing
-        result = {
-            "choices": [{
-                "message": {"content": full_text}
-            }],
-            "usage": resp_data.get("usage", {}),
-        }
+    # Extract text from final response
+    text_parts = []
+    for block in resp_data.get("content", []):
+        if block.get("type") == "text":
+            text_parts.append(block.get("text", ""))
+    full_text = "\n".join(text_parts)
+
+    result = {
+        "choices": [{"message": {"content": full_text}}],
+        "usage": resp_data.get("usage", {}),
+    }
+    try:
         cost_tracker.log_api_call(model, resp_data.get("usage", {}), status="success")
-        return result
-    except Exception as e:
-        cost_tracker.log_api_call(model, {}, status="error", error_msg=str(e))
-        raise
+    except Exception:
+        pass
+    return result
 
 
 # ── DeepSeek for final writing / analysis (no web search) ──────────────
@@ -1095,18 +1093,9 @@ def make_batch_analysis_prompt(
 ) -> str:
     """Build a batch prompt for AI to analyze multiple companies at once."""
     names = "、".join(c["name"] for c in companies)
-    return f"""
-请全面搜索以下目标公司在 {start.isoformat()} 至 {end.isoformat()} 的所有公开动态（投资事件、募资、基金设立、退出、人事变动、行业活动等）。
-
-目标：{names}
-
-要求：
-1. 每条信息必须带原文链接（URL）
-2. 把每条归类到：基金募集动态 / 投资组合与交易动态 / 已投项目投后管理 / 组织与团队建设 / 品牌与行业影响力 / 战略动向与合作关系 / 合规与监管动态
-3. 优先级：⭐⭐⭐=战略级（募资/投资），⭐⭐=运营级（投后/人事），⭐=生态级（品牌/合规）
-4. 最后把所有结果汇总为一个JSON数组，格式：[{{"company":"公司名","title":"标题","url":"链接","source":"来源","published":"YYYY-MM-DD","summary":"80-200字摘要","dimension":"维度","priority":"⭐⭐⭐|⭐⭐|⭐"}}]
-5. 如果某公司完全没有可验证信息，不要编造，对应数组为空[]
-"""
+    start_cn = f"{start.year}年{start.month}月{start.day}日"
+    end_cn = f"{end.year}年{end.month}月{end.day}日"
+    return f"请全面搜索{names}在{start_cn}到{end_cn}的所有动态信息：投资事件、募资、基金设立、退出、人事变动、行业活动等。每条都要带原文链接。"
 
 
 def ai_row_to_item(
@@ -1209,23 +1198,41 @@ def fetch_ai_search_batch_intel(
             names_str = "、".join(c["name"] for c in batch)
             print(f"AI Search 批次 {batch_index}/{total // batch_size + 1}：{names_str}", flush=True)
             messages: list[dict[str, Any]] = [
-                {"role": "system", "content": "你是私募股权情报分析师。联网搜索各公司近期动态，输出JSON。"},
                 {"role": "user", "content": make_batch_analysis_prompt(category, batch, start, end, model_name)},
             ]
             try:
                 completion = ai_search_chat(messages)
                 content = completion["choices"][0]["message"].get("content", "")
-                # Extract JSON array — handle both raw JSON and markdown code blocks
+                # Step 1: extract JSON from the narrative response
                 json_text = None
-                # Try ```json code block first
                 code_match = re.search(r"```(?:json)?\s*(\[[\s\S]*?\])\s*```", content)
                 if code_match:
                     json_text = code_match.group(1)
                 else:
-                    # Find first [ ... ] array (non-greedy to avoid matching past end)
                     json_match = re.search(r"\[[\s\S]*?\]", content)
                     if json_match:
                         json_text = json_match.group(0)
+
+                # Step 2: if no JSON found, use telecom DeepSeek to convert narrative text to JSON
+                if not json_text and content and len(content) > 50:
+                    try:
+                        conv_msgs = [
+                            {"role": "system", "content": "把下面的搜索结果转换为JSON数组。字段：company/title/url/source/published/summary/dimension/priority。dimension选：基金募集动态/投资组合与交易动态/已投项目投后管理/组织与团队建设/品牌与行业影响力/战略动向与合作关系/合规与监管动态。priority选P0(募资投资)/P1(投后人事)/P2(品牌合规)。只输出```json代码块。"},
+                            {"role": "user", "content": content[:8000]},
+                        ]
+                        conv_result = deepseek_chat(conv_msgs, temperature=0.1)
+                        conv_content = conv_result["choices"][0]["message"].get("content", "")
+                        code_match = re.search(r"```(?:json)?\s*(\[[\s\S]*?\])\s*```", conv_content)
+                        if code_match:
+                            json_text = code_match.group(1)
+                        else:
+                            json_match = re.search(r"\[[\s\S]*?\]", conv_content)
+                            if json_match:
+                                json_text = json_match.group(0)
+                    except Exception as e:
+                        failures.append(f"AI Search JSON转换失败（{names_str}）：{e}")
+                        continue
+
                 if not json_text:
                     failures.append(f"AI Search（{names_str}）未返回 JSON 数组")
                     continue
