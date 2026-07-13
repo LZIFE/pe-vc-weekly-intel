@@ -415,7 +415,31 @@ def is_plausible_url(url: str) -> bool:
     # Known trustworthy domains - skip HTTP verification
     _trusted_domains = {"finance.eastmoney.com", "www.36kr.com", "finance.sina.com.cn",
                         "www.stcn.com", "www.cls.cn", "finance.people.com.cn",
-                        "rsshub.app", "rsshub.rssforever.com"}
+                        "rsshub.app", "rsshub.rssforever.com",
+                        # AI Search (DeepSeek Anthropic) commonly returns these
+                        "36kr.com", "pedaily.cn", "www.pedaily.cn",
+                        "mp.weixin.qq.com", "chinaventure.com.cn",
+                        "www.chinaventure.com.cn", "news.qq.com",
+                        "www.jiemian.com", "m.jiemian.com",
+                        "eastmoney.com", "www.eastmoney.com",
+                        "sina.com.cn", "www.sina.com.cn",
+                        "163.com", "www.163.com",
+                        "lieyunpro.com", "m.lieyunpro.com",
+                        "toutiao.com", "m.toutiao.com",
+                        "alumni.fudan.edu.cn", "econ.fudan.edu.cn",
+                        "gov.cn", "jingan.gov.cn", "beijihainews.com.cn",
+                        "sohu.com", "www.sohu.com",
+                        "ifeng.com", "www.ifeng.com",
+                        "cn.chinadaily.com.cn", "www.chinadaily.com.cn",
+                        "smarthey.com", "www.smarthey.com",
+                        "eastfi.com", "www.eastfi.com",
+                        "guba.eastmoney.com", "wap.eastmoney.com",
+                        "pe.pedaily.cn", "fund.eastmoney.com",
+                        "xueqiu.com", "www.xueqiu.com",
+                        "tencent.com", "www.tencent.com",
+                        "eefocus.com", "www.eefocus.com",
+                        "laoyaoba.com", "www.laoyaoba.com",
+    }
     if domain in _trusted_domains:
         return True
     # For other domains, do a quick HEAD request to verify accessibility
@@ -974,6 +998,45 @@ def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> 
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             resp_data = json.loads(resp.read().decode("utf-8"))
 
+        # Handle tool_use: if the model called web_search, feed tool results back
+        # Anthropic API does NOT auto-execute tools — we must handle the loop
+        max_rounds = 3
+        for _round in range(max_rounds):
+            tool_uses = [b for b in resp_data.get("content", []) if b.get("type") == "tool_use"]
+            if not tool_uses:
+                break  # No tools called, response is final
+
+            # Build tool results for each tool_use
+            anthropic_msgs.append({
+                "role": "assistant",
+                "content": resp_data.get("content", []),
+            })
+            tool_results = []
+            for tu in tool_uses:
+                # The web_search tool results are handled server-side by the endpoint,
+                # but we need to pass back an acknowledgment. Use empty string and let
+                # the server fill in the actual search results.
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tu.get("id", ""),
+                    "content": tu.get("input", {}).get("query", ""),
+                })
+            anthropic_msgs.append({"role": "user", "content": tool_results})
+            body["messages"] = anthropic_msgs
+
+            data = json.dumps(body).encode("utf-8")
+            req = urllib.request.Request(
+                url, data=data,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                resp_data = json.loads(resp.read().decode("utf-8"))
+
         # Extract text from Anthropic response, convert back to OpenAI-like format
         text_parts = []
         for block in resp_data.get("content", []):
@@ -1033,17 +1096,17 @@ def make_batch_analysis_prompt(
     """Build a batch prompt for AI to analyze multiple companies at once."""
     names = "、".join(c["name"] for c in companies)
     return f"""
-搜索 {start.isoformat()} 至 {end.isoformat()} 目标公司动态，必须只输出纯JSON数组，不要markdown包裹、不要解释文字。
+请全面搜索以下目标公司在 {start.isoformat()} 至 {end.isoformat()} 的所有公开动态（投资事件、募资、基金设立、退出、人事变动、行业活动等）。
 
 目标：{names}
-分组：{category}
 
-维度归类：基金募集动态/投资组合与交易动态/已投项目投后管理/组织与团队建设/品牌与行业影响力/战略动向与合作关系/合规与监管动态
-
-输出格式（严格遵守，放在```json代码块内）：
-```json
-[{{"company":"公司名","title":"标题","url":"https://...","source":"来源","published":"YYYY-MM-DD","summary":"摘要","dimension":"维度名","priority":"P0|P1|P2"}}]
-```"""
+要求：
+1. 每条信息必须带原文链接（URL）
+2. 把每条归类到：基金募集动态 / 投资组合与交易动态 / 已投项目投后管理 / 组织与团队建设 / 品牌与行业影响力 / 战略动向与合作关系 / 合规与监管动态
+3. 优先级：⭐⭐⭐=战略级（募资/投资），⭐⭐=运营级（投后/人事），⭐=生态级（品牌/合规）
+4. 最后把所有结果汇总为一个JSON数组，格式：[{{"company":"公司名","title":"标题","url":"链接","source":"来源","published":"YYYY-MM-DD","summary":"80-200字摘要","dimension":"维度","priority":"⭐⭐⭐|⭐⭐|⭐"}}]
+5. 如果某公司完全没有可验证信息，不要编造，对应数组为空[]
+"""
 
 
 def ai_row_to_item(
