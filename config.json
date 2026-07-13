@@ -3,6 +3,9 @@
   "timezone": "Asia/Shanghai",
   "lookback_days": 30,
   "fallback_days": 30,
+  "force_doubao_companies": [
+    "德同资本"
+  ],
   "recipients": [
     "readylinoffice@gmail.com",
     "roxan.tong@dtdyfund.com"

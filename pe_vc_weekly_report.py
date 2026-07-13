@@ -1075,28 +1075,45 @@ def ai_row_to_item(
 def fetch_doubao_search_intel(
     config: dict[str, Any], start: dt.date, end: dt.date, tz: ZoneInfo,
     covered_companies: set[str] | None = None,
+    force_companies: set[str] | None = None,
 ) -> tuple[list[IntelItem], list[str]]:
-    """Use Doubao only for companies not covered by the RSS-first phase."""
+    """Use Doubao for RSS gaps and explicitly requested single-company supplements."""
     if not os.environ.get("ARK_SEARCH_API_KEY"):
         return [], ["豆包搜索跳过：缺少 ARK_SEARCH_API_KEY"]
     items: list[IntelItem] = []
     failures: list[str] = []
     targets = iter_unique_companies(config)
     covered = covered_companies or set()
-    ai_targets = [(group, company) for group, company in targets if company.get("name", "") not in covered]
+    forced = force_companies or set()
+    ai_targets = [
+        (group, company) for group, company in targets
+        if company.get("name", "") not in covered or company.get("name", "") in forced
+    ]
     limit = int(os.environ.get("DOUBAO_PE_COMPANY_LIMIT", "0"))
     if limit > 0:
         ai_targets = ai_targets[:limit]
     result_count = int(os.environ.get("DOUBAO_SEARCH_RESULT_COUNT", "20"))
     batch_size = max(1, int(os.environ.get("DOUBAO_SEARCH_BATCH_SIZE", "20")))
     workers = max(1, int(os.environ.get("DOUBAO_SEARCH_WORKERS", "2")))
-    batches = [ai_targets[i:i + batch_size] for i in range(0, len(ai_targets), batch_size)]
+    # A forced supplement gets a dedicated query. It must not compete with nineteen
+    # unrelated managers for a shared search-result budget.
+    forced_targets = [target for target in ai_targets if target[1].get("name", "") in forced]
+    gap_targets = [target for target in ai_targets if target[1].get("name", "") not in forced]
+    batches = [[target] for target in forced_targets]
+    batches.extend(gap_targets[i:i + batch_size] for i in range(0, len(gap_targets), batch_size))
 
     def search_batch(batch: list[tuple[str, dict[str, str]]]) -> tuple[list[IntelItem], list[str]]:
         batch_items: list[IntelItem] = []
         batch_failures: list[str] = []
         names = [company.get("name", "") for _category, company in batch if company.get("name")]
-        query = f"目标机构：{'、'.join(names)}。主题：募资、基金设立、投资融资、退出并购、人事、战略合作、监管。"
+        if len(names) == 1:
+            query = (
+                f"请检索 {names[0]} 在 {start.isoformat()} 至 {end.isoformat()} 期间的公开动态。"
+                "重点覆盖募资、基金设立、投资融资、退出并购、人事、战略合作与监管；"
+                "返回带原文链接和发布日期、且直接提及该机构的结果。"
+            )
+        else:
+            query = f"目标机构：{'、'.join(names)}。主题：募资、基金设立、投资融资、退出并购、人事、战略合作、监管。"
         try:
             rows = doubao_search(
                 query,
@@ -1351,12 +1368,14 @@ def top_companies(items: list[IntelItem], n: int = 5) -> list[tuple[str, int]]:
 def build_report(
     items: list[IntelItem], failures: list[str],
     config: dict[str, Any], tz: ZoneInfo, recipients: list[str],
+    search_start: dt.date | None = None,
+    search_end: dt.date | None = None,
 ) -> dict[str, Any]:
     now = dt.datetime.now(tz)
     today_cn = now.strftime("%Y年%m月%d日")
-    lookback = start_lookback_days(config)
-    start_date = now.date() - dt.timedelta(days=lookback)
-    date_range = f"{start_date.isoformat()} 至 {now.date().isoformat()}"
+    end_date = search_end or now.date()
+    start_date = search_start or (end_date - dt.timedelta(days=start_lookback_days(config)))
+    date_range = f"{start_date.isoformat()} 至 {end_date.isoformat()}"
     subject = f"中国TOP100私募股权GP动态周报（{today_cn}）"
     # Count unique companies WITHOUT the AI_SEARCH_COMPANY_LIMIT env var
     target_aliases = company_aliases(config)
@@ -1450,6 +1469,7 @@ def build_report(
 <div style="padding:28px 24px 22px;background:#fbfaf7;border-bottom:1px solid #e8e6df;">
 <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#888;font-weight:700;">PE/VC Weekly Intel</div>
 <h1 style="font-size:25px;line-height:1.3;margin:8px 0 18px;color:#111;letter-spacing:0;">%s</h1>
+<div style="margin:-9px 0 14px;font-size:13px;color:#555;line-height:1.6;">信息检索时间范围：<strong style="color:#111;">%s</strong></div>
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%%" style="margin-bottom:16px;">
 <tr>
 <td style="width:33%%;padding:8px 12px 8px 0;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">募资动态</div><div style="font-size:22px;font-weight:700;color:#1a7f37;">%d</div><div style="font-size:11px;color:#999;">条</div></td>
@@ -1465,7 +1485,7 @@ def build_report(
 <div style="font-size:13px;color:#444;line-height:1.8;margin-bottom:4px;"><strong>活跃赛道：</strong>%s</div>
 <div style="font-size:13px;color:#444;line-height:1.8;margin-bottom:4px;"><strong>最活跃机构：</strong>%s</div>
 <div style="font-size:13px;color:#444;line-height:1.8;margin-bottom:14px;"><strong>P0 %d 条 / P1 %d 条 / P2 %d 条</strong> · 覆盖 %d 家管理人</div>
-""" % (esc(subject), fund_count, invest_count, esc(amount_str),
+""" % (esc(subject), esc(date_range), fund_count, invest_count, esc(amount_str),
        people_count, postmgmt_count + compliance_count, len(active_companies),
        esc(sectors_str), esc(top_co_str),
        p0_count, p1_count, p2_count, target_count))
@@ -1568,6 +1588,7 @@ def build_report(
         "html_body": "\n".join(html_parts),
         "plain_text": "\n".join(text_parts),
         "summary": f"覆盖 {target_count} 家管理人，本次去重后收录 {len(items)} 条有效情报 ({date_range})。",
+        "search_window": {"start": start_date.isoformat(), "end": end_date.isoformat()},
         "channel_counts": channel_counts,
         "items": [asdict(item) for item in items],
         "failures": failures,
@@ -1758,6 +1779,7 @@ def main() -> int:
     parser.add_argument("--lookback-days", type=int, default=30)
     parser.add_argument("--max-items", type=int, default=int(os.environ.get("MAX_ITEMS", "0")), help="0 means no truncation")
     parser.add_argument("--crawler-input", action="append", default=[], help="JSON/JSONL crawler file or directory; repeatable")
+    parser.add_argument("--force-doubao-company", action="append", default=[], help="run a dedicated Doubao search even when RSS has covered this company; repeatable")
     args = parser.parse_args()
 
     load_dotenv(ENV_PATH)
@@ -1774,7 +1796,16 @@ def main() -> int:
             raise RuntimeError(f"找不到已生成的报告：{OUT_JSON}")
         existing = json.loads(OUT_JSON.read_text(encoding="utf-8"))
         items = load_existing_items(existing)
-        report = build_report(items, existing.get("failures", []), config, tz, recipients)
+        window = existing.get("search_window", {})
+        try:
+            existing_start = dt.date.fromisoformat(str(window.get("start", "")))
+            existing_end = dt.date.fromisoformat(str(window.get("end", "")))
+        except ValueError:
+            existing_start = existing_end = None
+        report = build_report(
+            items, existing.get("failures", []), config, tz, recipients,
+            search_start=existing_start, search_end=existing_end,
+        )
         write_report_files(report, allow_empty=True)
         sent_reports = send_item_batches(items, existing.get("failures", []), config, tz, recipients)
         print(json.dumps({
@@ -1800,8 +1831,14 @@ def main() -> int:
         if item.company and item.company != "行业/综合":
             rss_counts[item.company] = rss_counts.get(item.company, 0) + 1
     rss_covered = {name for name, count in rss_counts.items() if count >= coverage_min}
+    configured_forced = config.get("force_doubao_companies", [])
+    env_forced = os.environ.get("DOUBAO_FORCE_COMPANIES", "").split(",")
+    forced_companies = {
+        name.strip() for name in [*args.force_doubao_company, *configured_forced, *env_forced]
+        if name and name.strip()
+    }
     doubao_items, doubao_failures = fetch_doubao_search_intel(
-        config, start, today, tz, covered_companies=rss_covered,
+        config, start, today, tz, covered_companies=rss_covered, force_companies=forced_companies,
     )
     # Phase 4: AMAC filing (fallback to AI Search)
     amac_items, amac_failures = fetch_amac_filing(config, start, tz)
@@ -1860,13 +1897,14 @@ def main() -> int:
 
     if args.max_items > 0:
         items = items[: args.max_items]
-    report = build_report(items, failures, config, tz, recipients)
+    report = build_report(items, failures, config, tz, recipients, search_start=start, search_end=today)
     all_targets = {company.get("name", "") for _group, company in iter_unique_companies(config)}
     report["collection_coverage"] = {
         "configured_companies": len(all_targets),
         "rss_covered_companies": len(rss_covered & all_targets),
         "doubao_gap_companies": len(all_targets - rss_covered),
         "strategy": "rss_first_doubao_gap_fill",
+        "forced_doubao_companies": sorted(forced_companies),
     }
 
     write_report_files(report, allow_empty=os.environ.get("ALLOW_EMPTY_REPORT") == "1")
