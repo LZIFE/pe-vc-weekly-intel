@@ -955,6 +955,7 @@ def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> 
         "messages": anthropic_msgs,
         "max_tokens": 16384,
         "tools": [{"name": "web_search", "type": "web_search_20250305"}],
+        "thinking": {"type": "disabled"},
     }
     if system_content:
         body["system"] = system_content
