@@ -70,6 +70,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Restore intelligence cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/intelligence
+          key: pe-intelligence-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            pe-intelligence-${{ runner.os }}-
+
       - name: Start local RSSHub
         run: |
           docker run -d --name rsshub -p 1200:1200 diygod/rsshub
