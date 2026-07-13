@@ -14,11 +14,13 @@ import re
 import shutil
 import smtplib
 import ssl
+import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -28,6 +30,16 @@ from zoneinfo import ZoneInfo
 import cost_tracker
 
 BASE_DIR = Path(__file__).resolve().parent
+WORKSPACE_ROOT = BASE_DIR.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
+
+from automation_core import agnes_chat, doubao_search, load_crawler_rows, load_dotenv as load_shared_dotenv
+
+load_shared_dotenv(BASE_DIR / ".env")
+load_shared_dotenv(BASE_DIR / ".agnes.env")
+load_shared_dotenv(WORKSPACE_ROOT / ".search.env", override=True)
+
 CONFIG_PATH = BASE_DIR / "config.json"
 ENV_PATH = BASE_DIR / ".env"
 OUT_JSON = BASE_DIR / "pe_vc_weekly_last_report.json"
@@ -838,7 +850,7 @@ def fetch_rss(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -> tuple[lis
 # ── Targeted company search (RSSHub-based) ────────────────────────────
 
 def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -> tuple[list[IntelItem], list[str]]:
-    """Search for each tracked company using RSSHub eastmoney search."""
+    """Search every tracked company through RSSHub, with bounded concurrency."""
     if os.environ.get("ENABLE_TARGETED_RSS_SEARCH", "1") != "1":
         return [], []
     aliases = company_aliases(config)
@@ -849,13 +861,15 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
     if limit > 0:
         targets = targets[:limit]
     search_timeout = int(os.environ.get("SEARCH_HTTP_TIMEOUT", "30"))
-    search_delay = int(os.environ.get("SEARCH_DELAY", "3"))
     items: list[IntelItem] = []
     failures: list[str] = []
-    for idx, (_group, company) in enumerate(targets):
+    workers = max(1, int(os.environ.get("RSS_SEARCH_WORKERS", "8")))
+
+    def search_company(target: tuple[str, dict[str, str]]) -> tuple[list[IntelItem], str | None]:
+        _group, company = target
         name = company.get("name", "")
         if not name:
-            continue
+            return [], None
         keyword = urllib.parse.quote(name)
         url = f"{rsshub_base}/eastmoney/search/{keyword}"
         fallback_url = f"{rsshub_fallback}/eastmoney/search/{keyword}" if rsshub_fallback != rsshub_base else None
@@ -863,6 +877,7 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
         try:
             raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=search_timeout, retries=2)
             batch = parse_rss_items(raw, source, tz, aliases, start, lenient=True)
+            company_items: list[IntelItem] = []
             for item in batch:
                 # Accept if the item's text directly mentions the search target (or its aliases)
                 # This handles cases where infer_company picks a different GP mentioned alongside
@@ -872,7 +887,7 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
                 if mentioned_target:
                     item.company = name  # force correct company
                     item.channel = "搜索RSS"
-                    items.append(item)
+                    company_items.append(item)
                     continue
                 if item.company == name:
                     pass  # exact match
@@ -883,11 +898,18 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
                 else:
                     continue  # no match
                 item.channel = "搜索RSS"
-                items.append(item)
+                company_items.append(item)
+            return company_items, None
         except Exception as exc:
-            failures.append(f"东方财富搜索RSS（{name}）拉取失败：{exc}")
-        if idx < len(targets) - 1:
-            time.sleep(search_delay)
+            return [], f"东方财富搜索RSS（{name}）拉取失败：{exc}"
+
+    with ThreadPoolExecutor(max_workers=min(workers, len(targets) or 1)) as executor:
+        futures = [executor.submit(search_company, target) for target in targets]
+        for future in as_completed(futures):
+            batch, failure = future.result()
+            items.extend(batch)
+            if failure:
+                failures.append(failure)
     return items, failures
 
 
@@ -950,137 +972,24 @@ def enrich_announcement_items(items: list[IntelItem]) -> list[IntelItem]:
     return enriched
 
 
-# ── AI Search batch intel (DeepSeek Anthropic with web search) ──────────
+# ── Search and AI reading ───────────────────────────────────────────────
 
 def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
-    """Call DeepSeek via Anthropic Messages API — guarantees web_search execution."""
-    api_key = os.environ.get("AI_SEARCH_API_KEY", "")
-    base_url = os.environ.get("AI_SEARCH_BASE_URL", "https://api.deepseek.com/anthropic").rstrip("/")
-    model = os.environ.get("AI_SEARCH_MODEL", "deepseek-v4-flash")
-    if not api_key:
-        raise RuntimeError("缺少 AI_SEARCH_API_KEY")
-    url = f"{base_url}/v1/messages"
-    timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
-
-    # Convert to Anthropic format
-    anthropic_msgs: list[dict[str, Any]] = []
-    system_content = ""
-    for m in messages:
-        role = m.get("role", "user")
-        content = m.get("content", "")
-        if role == "system":
-            system_content = content
-        else:
-            anthropic_msgs.append({"role": role, "content": content})
-
-    body: dict[str, Any] = {
-        "model": model,
-        "messages": anthropic_msgs,
-        "max_tokens": 16384,
-        "tools": [{"name": "web_search", "type": "web_search_20250305"}],
-    }
-    if system_content:
-        body["system"] = system_content
-
-    def _do_request(msgs: list[dict], tool_use_ids_seen: set | None = None) -> dict:
-        b = {**body, "messages": msgs}
-        data = json.dumps(b).encode("utf-8")
-        req = urllib.request.Request(
-            url, data=data,
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            method="POST",
-        )
-        resp_data: dict[str, Any] = {}
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            resp_data = json.loads(resp.read().decode("utf-8"))
-        return resp_data
-
-    # Up to 2 retries when model fails to use web_search
-    for attempt in range(3):
-        resp_data = _do_request(anthropic_msgs)
-        content_blocks = resp_data.get("content", [])
-
-        # Check for proper tool_use blocks (model actually using web_search)
-        tool_uses = [b for b in content_blocks if b.get("type") == "tool_use"]
-
-        if tool_uses:
-            # Model properly used web_search — handle the tool_use → tool_result loop
-            anthropic_msgs.append({"role": "assistant", "content": content_blocks})
-            tool_results = []
-            for tu in tool_uses:
-                if tu.get("name") == "web_search":
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": tu.get("id", ""),
-                        "content": tu.get("input", {}).get("query", ""),
-                    })
-            anthropic_msgs.append({"role": "user", "content": tool_results})
-            # Get final answer with search results
-            resp_data = _do_request(anthropic_msgs)
-            break
-
-        # Check for inline <tool_calls> text (model failed to execute)
-        text_blocks = [b for b in content_blocks if b.get("type") == "text"]
-        combined_text = "\n".join(b.get("text", "") for b in text_blocks)
-
-        if "<tool_calls>" in combined_text or "<invoke" in combined_text:
-            # Model described tool calls instead of executing — retry with stronger prompt
-            if attempt < 2:
-                anthropic_msgs[0]["content"] = (
-                    "CRITICAL: You MUST use the web_search tool. Do NOT output <tool_calls> in text. "
-                    "Execute the web_search tool to find real, verifiable information with URLs. "
-                    + anthropic_msgs[0]["content"]
-                )
-                continue
-        break  # Got real results or exhausted retries
-
-    # Extract text from final response
-    text_parts = []
-    for block in resp_data.get("content", []):
-        if block.get("type") == "text":
-            text_parts.append(block.get("text", ""))
-    full_text = "\n".join(text_parts)
-
-    result = {
-        "choices": [{"message": {"content": full_text}}],
-        "usage": resp_data.get("usage", {}),
-    }
-    try:
-        cost_tracker.log_api_call(model, resp_data.get("usage", {}), status="success")
-    except Exception:
-        pass
-    return result
+    """Compatibility wrapper for non-search reading; new search uses Doubao directly."""
+    return agnes_chat(messages, temperature=temperature, max_tokens=2048)
 
 
 # ── DeepSeek for final writing / analysis (no web search) ──────────────
 
-def deepseek_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
-    """Call DeepSeek for text generation/analysis — no web search."""
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    base_url = os.environ.get("DEEPSEEK_BASE_URL", "https://ai.ctaigw.cn/v1").rstrip("/")
-    model = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
-    if not api_key:
-        raise RuntimeError("缺少 DEEPSEEK_API_KEY")
-    url = f"{base_url}/chat/completions"
-    timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
-    body: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": 8192,
-        "stream": False,
-    }
+def agnes_read(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
+    """Use Agnes for all non-search reading."""
     try:
-        result = http_post_json(url, body, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
+        result = agnes_chat(messages, temperature=temperature, max_tokens=2048)
         usage = result.get("usage", {}) if isinstance(result, dict) else {}
-        cost_tracker.log_api_call(model, usage, status="success")
+        cost_tracker.log_api_call(os.environ.get("AGNES_MODEL", "agnes-2.0-flash"), usage, status="success")
         return result
     except Exception as e:
-        cost_tracker.log_api_call(model, {}, status="error", error_msg=str(e))
+        cost_tracker.log_api_call(os.environ.get("AGNES_MODEL", "agnes-2.0-flash"), {}, status="error", error_msg=str(e))
         raise
 
 
@@ -1163,95 +1072,82 @@ def ai_row_to_item(
     )
 
 
-def fetch_ai_search_batch_intel(
+def fetch_doubao_search_intel(
     config: dict[str, Any], start: dt.date, end: dt.date, tz: ZoneInfo,
+    covered_companies: set[str] | None = None,
 ) -> tuple[list[IntelItem], list[str]]:
-    """Batch intel retrieval via AI search — tier 1 only."""
-    if not os.environ.get("AI_SEARCH_API_KEY"):
-        return [], ["AI Search 跳过：缺少 AI_SEARCH_API_KEY"]
+    """Use Doubao only for companies not covered by the RSS-first phase."""
+    if not os.environ.get("ARK_SEARCH_API_KEY"):
+        return [], ["豆包搜索跳过：缺少 ARK_SEARCH_API_KEY"]
     items: list[IntelItem] = []
     failures: list[str] = []
-    batch_size = int(os.environ.get("BATCH_SIZE", "8"))
-    delay = int(os.environ.get("BATCH_SEARCH_DELAY", "2"))
-    model_name = os.environ.get("AI_SEARCH_MODEL", "deepseek-v4-flash")
-
     targets = iter_unique_companies(config)
-    # Only tier 1 (核心机构) uses AI; tier 2+ rely on RSS
-    ai_targets = [(g, c) for g, c in targets if c.get("tier", 3) == 1]
+    covered = covered_companies or set()
+    ai_targets = [(group, company) for group, company in targets if company.get("name", "") not in covered]
+    limit = int(os.environ.get("DOUBAO_PE_COMPANY_LIMIT", "0"))
+    if limit > 0:
+        ai_targets = ai_targets[:limit]
+    result_count = int(os.environ.get("DOUBAO_SEARCH_RESULT_COUNT", "20"))
+    batch_size = max(1, int(os.environ.get("DOUBAO_SEARCH_BATCH_SIZE", "20")))
+    workers = max(1, int(os.environ.get("DOUBAO_SEARCH_WORKERS", "2")))
+    batches = [ai_targets[i:i + batch_size] for i in range(0, len(ai_targets), batch_size)]
 
-    total = len(ai_targets)
-    if not total:
-        return [], []
-    print(f"AI Search Batch: {total} 家公司（tier 1），批次大小 {batch_size}", flush=True)
-
-    # Group by category then batch
-    category_map: dict[str, list[dict[str, str]]] = {}
-    for group, company in ai_targets:
-        category_map.setdefault(group, []).append(company)
-
-    batch_index = 0
-    batch_aliases = company_aliases(config)
-    for category, companies in category_map.items():
-        for i in range(0, len(companies), batch_size):
-            batch = companies[i:i + batch_size]
-            batch_index += 1
-            names_str = "、".join(c["name"] for c in batch)
-            print(f"AI Search 批次 {batch_index}/{total // batch_size + 1}：{names_str}", flush=True)
-            messages: list[dict[str, Any]] = [
-                {"role": "user", "content": make_batch_analysis_prompt(category, batch, start, end, model_name)},
-            ]
-            try:
-                completion = ai_search_chat(messages)
-                content = completion["choices"][0]["message"].get("content", "")
-                # Step 1: extract JSON from the narrative response
-                json_text = None
-                code_match = re.search(r"```(?:json)?\s*(\[[\s\S]*?\])\s*```", content)
-                if code_match:
-                    json_text = code_match.group(1)
-                else:
-                    json_match = re.search(r"\[[\s\S]*?\]", content)
-                    if json_match:
-                        json_text = json_match.group(0)
-
-                # Step 2: if no JSON found, use telecom DeepSeek to convert narrative text to JSON
-                if not json_text and content and len(content) > 50:
-                    try:
-                        conv_msgs = [
-                            {"role": "system", "content": "把下面的搜索结果转换为JSON数组。字段：company/title/url/source/published/summary/dimension/priority。dimension选：基金募集动态/投资组合与交易动态/已投项目投后管理/组织与团队建设/品牌与行业影响力/战略动向与合作关系/合规与监管动态。priority选P0(募资投资)/P1(投后人事)/P2(品牌合规)。只输出```json代码块。"},
-                            {"role": "user", "content": content[:8000]},
-                        ]
-                        conv_result = deepseek_chat(conv_msgs, temperature=0.1)
-                        conv_content = conv_result["choices"][0]["message"].get("content", "")
-                        code_match = re.search(r"```(?:json)?\s*(\[[\s\S]*?\])\s*```", conv_content)
-                        if code_match:
-                            json_text = code_match.group(1)
-                        else:
-                            json_match = re.search(r"\[[\s\S]*?\]", conv_content)
-                            if json_match:
-                                json_text = json_match.group(0)
-                    except Exception as e:
-                        failures.append(f"AI Search JSON转换失败（{names_str}）：{e}")
-                        continue
-
-                if not json_text:
-                    failures.append(f"AI Search（{names_str}）未返回 JSON 数组")
+    def search_batch(batch: list[tuple[str, dict[str, str]]]) -> tuple[list[IntelItem], list[str]]:
+        batch_items: list[IntelItem] = []
+        batch_failures: list[str] = []
+        names = [company.get("name", "") for _category, company in batch if company.get("name")]
+        query = f"目标机构：{'、'.join(names)}。主题：募资、基金设立、投资融资、退出并购、人事、战略合作、监管。"
+        try:
+            rows = doubao_search(
+                query,
+                start_date=start.isoformat(),
+                end_date=end.isoformat(),
+                count=result_count,
+            )
+            for row in rows:
+                title = clean_text(str(row.get("Title", "")))
+                summary = shorten(str(row.get("Summary") or row.get("Snippet") or ""), 220)
+                url = normalize_source_url(str(row.get("Url", "")))
+                published_raw = clean_text(str(row.get("PublishTime", "")))
+                published_dt = parse_date(published_raw, tz)
+                text = f"{title} {summary}"
+                matches = [
+                    (category, company) for category, company in batch
+                    if company.get("name", "").lower() in text.lower()
+                ]
+                if not matches or not url or not published_dt or published_dt.date() < start:
                     continue
-                try:
-                    rows = json.loads(json_text)
-                except json.JSONDecodeError:
-                    failures.append(f"AI Search（{names_str}）JSON 解析失败")
+                category, company = max(matches, key=lambda pair: len(pair[1].get("name", "")))
+                name = company["name"]
+                classified = classify_matrix(text)
+                if not classified:
                     continue
-                accepted = 0
-                for row in rows:
-                    item = ai_row_to_item(row, "AI Search", category, batch, start, tz, batch_aliases)
-                    if item:
-                        items.append(item)
-                        accepted += 1
-                if rows and accepted == 0:
-                    failures.append(f"AI Search（{names_str}）返回 {len(rows)} 条，但未通过校验")
-            except Exception as exc:
-                failures.append(f"AI Search（{names_str}）拉取失败：{exc}")
-            time.sleep(delay)
+                priority, dimension, label = refine_classification(
+                    *classified, text, name, "third_party"
+                )
+                batch_items.append(IntelItem(
+                    title=title,
+                    url=url,
+                    source=clean_text(str(row.get("SiteName", ""))) or urllib.parse.urlparse(url).netloc,
+                    published=published_dt.date().isoformat(),
+                    summary=summary or title,
+                    company=name,
+                    company_group=category,
+                    priority=priority,
+                    dimension=dimension,
+                    matrix_label=label,
+                    channel="豆包搜索",
+                ))
+        except Exception as exc:
+            batch_failures.append(f"豆包搜索批次（{'、'.join(names)}）失败：{exc}")
+        return batch_items, batch_failures
+
+    with ThreadPoolExecutor(max_workers=min(workers, len(batches) or 1)) as executor:
+        futures = [executor.submit(search_batch, batch) for batch in batches]
+        for future in as_completed(futures):
+            batch_items, batch_failures = future.result()
+            items.extend(batch_items)
+            failures.extend(batch_failures)
     return items, failures
 
 
@@ -1368,8 +1264,8 @@ def start_lookback_days(config: dict[str, Any]) -> int:
 
 
 def generate_trend_analysis(items: list[IntelItem], failures: list[str]) -> str:
-    """Use DeepSeek to analyze trends from collected items (analysis only, no web search)."""
-    if not items or not os.environ.get("DEEPSEEK_API_KEY"):
+    """Use Agnes to analyze compact trend inputs (no web search)."""
+    if not items or not os.environ.get("AGNES_API_KEY"):
         return ""
     # Build a condensed summary of all items for analysis
     lines = []
@@ -1381,7 +1277,7 @@ def generate_trend_analysis(items: list[IntelItem], failures: list[str]) -> str:
         {"role": "user", "content": f"以下是本周采集的一级市场私募基金管理人竞争情报：\n{summary_text}\n\n请归纳3-5条趋势观察。"},
     ]
     try:
-        completion = deepseek_chat(messages, temperature=0.3)
+        completion = agnes_read(messages, temperature=0.3)
         return completion["choices"][0]["message"].get("content", "").strip()
     except Exception:
         return ""
@@ -1812,6 +1708,45 @@ def load_existing_items(report: dict[str, Any]) -> list[IntelItem]:
     return items
 
 
+def crawler_rows_to_items(
+    rows: list[dict[str, Any]], config: dict[str, Any], start: dt.date, tz: ZoneInfo,
+) -> list[IntelItem]:
+    """Adapt reusable crawler JSON/JSONL rows to the PE/VC report contract."""
+    aliases = company_aliases(config)
+    items: list[IntelItem] = []
+    for row in rows:
+        if str(row.get("vertical", "pe")).lower() not in {"pe", "private_equity", "private-equity"}:
+            continue
+        title = clean_text(str(row.get("title", "")))
+        summary = shorten(str(row.get("summary", "")), 300)
+        url = normalize_source_url(str(row.get("url", "")))
+        company = clean_text(str(row.get("company", "")))
+        published_dt = parse_date(str(row.get("published", "")), tz)
+        if not title or not url or company not in aliases or not published_dt or published_dt.date() < start:
+            continue
+        classified = classify_matrix(f"{title} {summary}")
+        if not classified:
+            continue
+        canonical, group, _code = aliases[company]
+        priority, dimension, label = refine_classification(
+            *classified, f"{title} {summary}", canonical, "third_party"
+        )
+        items.append(IntelItem(
+            title=title,
+            url=url,
+            source=clean_text(str(row.get("source", "爬虫导入"))) or "爬虫导入",
+            published=published_dt.date().isoformat(),
+            summary=summary or title,
+            company=canonical,
+            company_group=group,
+            priority=priority,
+            dimension=dimension,
+            matrix_label=label,
+            channel=clean_text(str(row.get("channel", "爬虫导入"))) or "爬虫导入",
+        ))
+    return items
+
+
 # ── Main ───────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -1822,9 +1757,12 @@ def main() -> int:
     parser.add_argument("--recipients", default=",".join(DEFAULT_RECIPIENTS), help="comma-separated recipient emails")
     parser.add_argument("--lookback-days", type=int, default=30)
     parser.add_argument("--max-items", type=int, default=int(os.environ.get("MAX_ITEMS", "0")), help="0 means no truncation")
+    parser.add_argument("--crawler-input", action="append", default=[], help="JSON/JSONL crawler file or directory; repeatable")
     args = parser.parse_args()
 
     load_dotenv(ENV_PATH)
+    load_dotenv(BASE_DIR / ".agnes.env")
+    load_dotenv(WORKSPACE_ROOT / ".search.env")
     config = load_config()
     tz = ZoneInfo(config.get("timezone", "Asia/Shanghai"))
     recipients = [value.strip() for value in args.recipients.split(",") if value.strip()]
@@ -1855,13 +1793,24 @@ def main() -> int:
     rss_items, rss_failures = fetch_rss(config, start, tz)
     # Phase 2: Targeted company search via RSSHub
     targeted_items, targeted_failures = fetch_company_search(config, start, tz)
-    # Phase 3: AI Search batch intel (DeepSeek official)
-    ai_search_items, ai_search_failures = fetch_ai_search_batch_intel(config, start, today, tz)
+    # Phase 3: Doubao only fills companies still uncovered after RSS.
+    coverage_min = max(1, int(os.environ.get("RSS_COVERAGE_MIN_ITEMS", "1")))
+    rss_counts: dict[str, int] = {}
+    for item in rss_items + targeted_items:
+        if item.company and item.company != "行业/综合":
+            rss_counts[item.company] = rss_counts.get(item.company, 0) + 1
+    rss_covered = {name for name, count in rss_counts.items() if count >= coverage_min}
+    doubao_items, doubao_failures = fetch_doubao_search_intel(
+        config, start, today, tz, covered_companies=rss_covered,
+    )
     # Phase 4: AMAC filing (fallback to AI Search)
     amac_items, amac_failures = fetch_amac_filing(config, start, tz)
+    crawler_paths = list(args.crawler_input)
+    crawler_paths.extend(filter(None, os.environ.get("CRAWLER_INPUT", "").split(os.pathsep)))
+    crawler_items = crawler_rows_to_items(load_crawler_rows(crawler_paths), config, start, tz)
 
-    items = sort_items(dedupe(rss_items + targeted_items + ai_search_items + amac_items))
-    failures = rss_failures + targeted_failures + ai_search_failures + amac_failures
+    items = sort_items(dedupe(rss_items + targeted_items + doubao_items + amac_items + crawler_items))
+    failures = rss_failures + targeted_failures + doubao_failures + amac_failures
 
     # Fill credibility & verification notes
     for item in items:
@@ -1882,11 +1831,23 @@ def main() -> int:
         failures.append(f"validate_item 过滤 {len(validate_log)} 条：" + "; ".join(validate_log[:15]))
     items = validated
 
-    # Validate URLs are reachable
+    # Validate unique URLs concurrently. Sequential HEAD probes used to dominate
+    # the whole run for large reports and made a 09:00 completion target unsafe.
     url_invalid: list[str] = []
     url_validated: list[IntelItem] = []
+    url_workers = max(1, int(os.environ.get("URL_VERIFY_WORKERS", "16")))
+    unique_urls = list(dict.fromkeys(item.url for item in items))
+    url_status: dict[str, bool] = {}
+    with ThreadPoolExecutor(max_workers=min(url_workers, len(unique_urls) or 1)) as executor:
+        future_urls = {executor.submit(validate_url, url): url for url in unique_urls}
+        for future in as_completed(future_urls):
+            url = future_urls[future]
+            try:
+                url_status[url] = future.result()
+            except Exception:
+                url_status[url] = False
     for item in items:
-        if validate_url(item.url):
+        if url_status.get(item.url, False):
             url_validated.append(item)
         else:
             url_invalid.append(f"URL不可访问 [{item.company}] {item.title[:50]} — {item.url}")
@@ -1900,6 +1861,13 @@ def main() -> int:
     if args.max_items > 0:
         items = items[: args.max_items]
     report = build_report(items, failures, config, tz, recipients)
+    all_targets = {company.get("name", "") for _group, company in iter_unique_companies(config)}
+    report["collection_coverage"] = {
+        "configured_companies": len(all_targets),
+        "rss_covered_companies": len(rss_covered & all_targets),
+        "doubao_gap_companies": len(all_targets - rss_covered),
+        "strategy": "rss_first_doubao_gap_fill",
+    }
 
     write_report_files(report, allow_empty=os.environ.get("ALLOW_EMPTY_REPORT") == "1")
 

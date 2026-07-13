@@ -29,8 +29,9 @@
 ## 采集源
 
 - **RSSHub 财经媒体**：投资界、36氪、财联社、证券时报、新浪财经、21 财经、人民网、新华网
-- **定向搜索**：按公司名调用 RSSHub EastMoney 搜索
-- **DeepSeek V4 Flash 批量 AI 检索**：tier 1+2 公司按 8 家一批合并 prompt，两段式检索分析
+- **定向搜索（可选）**：按公司名调用 RSSHub EastMoney；统一模式为保证截止时间默认关闭
+- **豆包 2.1 Turbo Web Search**：TOP100 机构默认按 20 家合并搜索，SSE 流式返回；豆包不读取正文
+- **Agnes 2.0 Flash**：负责非搜索读取、PDF 摘要与趋势归纳，结果按内容哈希缓存
 - **中基协公示系统**（降级备用）：公开接口查询备案/变更/处分记录
 
 ## 文件
@@ -39,13 +40,13 @@
 |------|------|
 | `pe_vc_weekly_report.py` | 主脚本：采集 → 去重 → 分类 → 生成邮件 JSON/HTML → SMTP 发送 |
 | `config.json` | 目标公司名单（421 家）、RSS 源、收件人配置 |
-| `.env.example` | SMTP 与 DeepSeek API 环境变量模板 |
+| `.env.example` | SMTP、豆包搜索与 Agnes 读取环境变量模板 |
 | `pe_vc_weekly_last_report.json` | 最近一次生成的完整邮件数据 |
 | `pe_vc_weekly_last_report.html` | 最近一次生成的 HTML 邮件正文预览 |
 
 ## 首次配置
 
-复制 `.env.example` 为 `.env`，填入发件邮箱 SMTP 信息和 DeepSeek API Key：
+复制 `.env.example` 为 `.env`，填入发件邮箱 SMTP 信息；生产密钥建议放在工作区根目录的忽略文件 `.search.env` 和模块的 `.agnes.env`：
 
 ```bash
 cp .env.example .env
@@ -53,20 +54,21 @@ cp .env.example .env
 
 163 邮箱通常需要开启 SMTP 服务，并使用"授权码"而不是登录密码。
 
-Kimi (Moonshot) 负责联网搜索情报，在 `.env` 中填入：
+豆包 2.1 Turbo 仅负责联网搜索：
 
 ```bash
-KIMI_API_KEY=sk-your-kimi-api-key
-KIMI_BASE_URL=https://api.moonshot.cn/v1
-KIMI_MODEL=kimi-k2.6
+ARK_SEARCH_API_KEY=your-ark-key
+ARK_SEARCH_MODE=responses
+ARK_RESPONSES_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+ARK_SEARCH_MODEL=doubao-seed-2-1-turbo-260628
 ```
 
-DeepSeek 负责最终趋势分析写作，在 `.env` 中填入：
+Agnes 负责正文/PDF 读取、摘要与趋势判断：
 
 ```bash
-DEEPSEEK_API_KEY=sk-your-deepseek-api-key
-DEEPSEEK_BASE_URL=https://ai.ctaigw.cn/v1
-DEEPSEEK_MODEL=deepseek-v4-flash
+AGNES_API_KEY=your-agnes-key
+AGNES_BASE_URL=https://apihub.agnes-ai.com/v1
+AGNES_MODEL=agnes-2.0-flash
 ```
 
 ## 手动测试
@@ -106,18 +108,27 @@ python3 pe_vc_weekly_report.py --send-existing
 | `SMTP_USER` | 163 发件邮箱地址 |
 | `SMTP_PASSWORD` | 163 SMTP 授权码 |
 | `SMTP_FROM` | 发件邮箱地址，通常与 `SMTP_USER` 一致 |
-| `KIMI_API_KEY` | Kimi API Key |
+| `ARK_SEARCH_API_KEY` | 豆包 / Ark Responses API Key |
+| `AGNES_API_KEY` | Agnes 非搜索分析与 PDF 读取 Key |
 
 可选变量：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `KIMI_BASE_URL` | `https://api.moonshot.cn/v1` | Kimi 端点 |
-| `KIMI_MODEL` | `kimi-k2.6` | 模型名 |
-| `BATCH_SIZE` | `8` | 每批检索公司数 |
-| `BATCH_SEARCH_DELAY` | `2` | 批间延迟秒数 |
+| `ARK_RESPONSES_BASE_URL` | `https://ark.cn-beijing.volces.com/api/v3` | 豆包 Responses 搜索端点 |
+| `ARK_SEARCH_MODEL` | `doubao-seed-2-1-turbo-260628` | 豆包 Web Search 模型 |
+| `AGNES_BASE_URL` | `https://apihub.agnes-ai.com/v1` | Agnes OpenAI 兼容端点 |
+| `AGNES_MODEL` | `agnes-2.0-flash` | 非搜索读取模型 |
+| `DOUBAO_PE_COMPANY_LIMIT` | `100` | 豆包检索的核心机构上限 |
+| `DOUBAO_SEARCH_BATCH_SIZE` | `20` | 每次搜索合并的公司数 |
+| `DOUBAO_SEARCH_WORKERS` | `2` | 搜索并发上限 |
+| `DOUBAO_SEARCH_STREAM` | `1` | 使用 SSE 流式响应 |
+| `DOUBAO_SEARCH_TIMEOUT` | `300` | 流中断等待秒数 |
+| `DOUBAO_SEARCH_MAX_RETRIES` | `1` | 避免付费请求重复执行 |
 | `SEARCH_DAYS` | `30` | 检索窗口天数 |
 | `RSSHUB_BASE_URL` | `http://127.0.0.1:1200` | 本地 RSSHub 实例 |
 | `EMAIL_CHUNK_SIZE` | `25` | 邮件拆分条目数 |
 | `AI_SEARCH_COMPANY_LIMIT` | `0` | 本地冒烟测试用（0=全量） |
 | `TARGETED_RSS_COMPANY_LIMIT` | `0` | 本地冒烟测试用（0=全量） |
+
+推荐从工作区根目录运行 `run_intelligence_system.py`，由统一完成门控负责与传媒报告一起同步到 `ai_web` 并发信。脚本还支持可重复的 `--crawler-input` JSON/JSONL 投递路径。

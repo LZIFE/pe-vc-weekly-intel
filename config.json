@@ -4,13 +4,14 @@
   "lookback_days": 30,
   "fallback_days": 30,
   "recipients": [
-    "readylinoffice@gmail.com"
+    "readylinoffice@gmail.com",
+    "roxan.tong@dtdyfund.com"
   ],
   "source_modes": {
     "rss": true,
     "news_api": false,
     "cninfo": false,
-    "deepseek": true,
+    "agnes": true,
     "manual": false
   },
   "rss_sources": [
