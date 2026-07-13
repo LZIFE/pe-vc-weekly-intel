@@ -1033,22 +1033,17 @@ def make_batch_analysis_prompt(
     """Build a batch prompt for AI to analyze multiple companies at once."""
     names = "、".join(c["name"] for c in companies)
     return f"""
-检索 {start.isoformat()} 至 {end.isoformat()} 目标公司动态，输出JSON数组。
+搜索 {start.isoformat()} 至 {end.isoformat()} 目标公司动态，必须只输出纯JSON数组，不要markdown包裹、不要解释文字。
 
 目标：{names}
 分组：{category}
 
-动态归类：
-- 基金募集动态（募资/基金/备案/LP）
-- 投资组合与交易动态（融资/IPO/并购/退出）
-- 已投项目投后管理（经营/风险/治理）
-- 组织与团队建设（人事/团队/架构）
-- 品牌与行业影响力（排名/获奖/活动）
-- 战略动向与合作关系（合作/布局/新赛道）
-- 合规与监管动态（监管/处罚/备案）
+维度归类：基金募集动态/投资组合与交易动态/已投项目投后管理/组织与团队建设/品牌与行业影响力/战略动向与合作关系/合规与监管动态
 
-要求：只输出JSON数组，每条含company/title/url/source/published/summary/dimension/priority。无可验证信息输出[]。每条必须带可访问URL。
-"""
+输出格式（严格遵守，放在```json代码块内）：
+```json
+[{{"company":"公司名","title":"标题","url":"https://...","source":"来源","published":"YYYY-MM-DD","summary":"摘要","dimension":"维度名","priority":"P0|P1|P2"}}]
+```"""
 
 
 def ai_row_to_item(
@@ -1157,13 +1152,22 @@ def fetch_ai_search_batch_intel(
             try:
                 completion = ai_search_chat(messages)
                 content = completion["choices"][0]["message"].get("content", "")
-                # Extract JSON array
-                json_match = re.search(r"\[.*\]", content, re.DOTALL)
-                if not json_match:
+                # Extract JSON array — handle both raw JSON and markdown code blocks
+                json_text = None
+                # Try ```json code block first
+                code_match = re.search(r"```(?:json)?\s*(\[[\s\S]*?\])\s*```", content)
+                if code_match:
+                    json_text = code_match.group(1)
+                else:
+                    # Find first [ ... ] array (non-greedy to avoid matching past end)
+                    json_match = re.search(r"\[[\s\S]*?\]", content)
+                    if json_match:
+                        json_text = json_match.group(0)
+                if not json_text:
                     failures.append(f"AI Search（{names_str}）未返回 JSON 数组")
                     continue
                 try:
-                    rows = json.loads(json_match.group(0))
+                    rows = json.loads(json_text)
                 except json.JSONDecodeError:
                     failures.append(f"AI Search（{names_str}）JSON 解析失败")
                     continue
