@@ -926,28 +926,69 @@ def enrich_announcement_items(items: list[IntelItem]) -> list[IntelItem]:
     return enriched
 
 
-# ── AI Search batch intel (DeepSeek official) ───────────────────────────
+# ── AI Search batch intel (DeepSeek Anthropic with web search) ──────────
 
 def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
-    """Call AI model for search/intel — uses AI_SEARCH_* env vars."""
+    """Call DeepSeek via Anthropic Messages API with web_search tool."""
     api_key = os.environ.get("AI_SEARCH_API_KEY", "")
-    base_url = os.environ.get("AI_SEARCH_BASE_URL", "https://api.deepseek.com/v1").rstrip("/")
+    base_url = os.environ.get("AI_SEARCH_BASE_URL", "https://api.deepseek.com/anthropic").rstrip("/")
     model = os.environ.get("AI_SEARCH_MODEL", "deepseek-v4-flash")
     if not api_key:
         raise RuntimeError("缺少 AI_SEARCH_API_KEY")
-    url = f"{base_url}/chat/completions"
+    url = f"{base_url}/v1/messages"
     timeout = int(os.environ.get("AI_HTTP_TIMEOUT", "3600"))
+
+    # Convert OpenAI-format messages to Anthropic format
+    # system → system, user → user, assistant → assistant
+    anthropic_msgs: list[dict[str, Any]] = []
+    system_content = ""
+    for m in messages:
+        role = m.get("role", "user")
+        content = m.get("content", "")
+        if role == "system":
+            system_content = content
+        else:
+            anthropic_msgs.append({"role": role, "content": content})
+
     body: dict[str, Any] = {
         "model": model,
-        "messages": messages,
-        "temperature": temperature,
+        "messages": anthropic_msgs,
         "max_tokens": 16384,
-        "stream": False,
+        "tools": [{"name": "web_search", "type": "web_search_20250305"}],
     }
+    if system_content:
+        body["system"] = system_content
+
     try:
-        result = http_post_json(url, body, {"Authorization": f"Bearer {api_key}"}, timeout=timeout)
-        usage = result.get("usage", {}) if isinstance(result, dict) else {}
-        cost_tracker.log_api_call(model, usage, status="success")
+        data = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
+        )
+        resp_data: dict[str, Any] = {}
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            resp_data = json.loads(resp.read().decode("utf-8"))
+
+        # Extract text from Anthropic response, convert back to OpenAI-like format
+        text_parts = []
+        for block in resp_data.get("content", []):
+            if block.get("type") == "text":
+                text_parts.append(block.get("text", ""))
+        full_text = "\n".join(text_parts)
+
+        # Convert to OpenAI-compatible format for downstream processing
+        result = {
+            "choices": [{
+                "message": {"content": full_text}
+            }],
+            "usage": resp_data.get("usage", {}),
+        }
+        cost_tracker.log_api_call(model, resp_data.get("usage", {}), status="success")
         return result
     except Exception as e:
         cost_tracker.log_api_call(model, {}, status="error", error_msg=str(e))
