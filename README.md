@@ -73,11 +73,21 @@ AGNES_MODEL=agnes-2.0-flash
 
 ## 手动测试
 
-只生成邮件 JSON，不发送：
+生成 JSON 和 HTML，不发送邮件：
 
 ```bash
 python3 pe_vc_weekly_report.py --dry-run
 ```
+
+只用豆包补充某一家机构，并把通过日期、公司和链接校验的结果合并到现有报告：
+
+```bash
+DOUBAO_SEARCH_TIMEOUT=90 python3 pe_vc_weekly_report.py \
+  --dry-run \
+  --supplement-existing-company 德同资本
+```
+
+该模式不会重新检索完整名单；运行时会显示 4 个阶段的即时进度。`--force-doubao-company` 则用于全量任务中强制补搜指定机构，两者含义不同。
 
 本地冒烟测试（仅检索前 2 家公司）：
 

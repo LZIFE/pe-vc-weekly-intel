@@ -1370,6 +1370,7 @@ def build_report(
     config: dict[str, Any], tz: ZoneInfo, recipients: list[str],
     search_start: dt.date | None = None,
     search_end: dt.date | None = None,
+    enable_trend_analysis: bool = True,
 ) -> dict[str, Any]:
     now = dt.datetime.now(tz)
     today_cn = now.strftime("%Y年%m月%d日")
@@ -1411,7 +1412,7 @@ def build_report(
         return f'<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;color:#fff;background:{c};">{esc(level)}</span>'
 
     # Generate trend analysis
-    trend_text = generate_trend_analysis(items, failures)
+    trend_text = generate_trend_analysis(items, failures) if enable_trend_analysis else ""
 
     # One-line conclusion
     p0_items = [i for i in items if i.priority == "P0"]
@@ -1729,6 +1730,85 @@ def load_existing_items(report: dict[str, Any]) -> list[IntelItem]:
     return items
 
 
+def supplement_existing_companies(
+    company_names: list[str], config: dict[str, Any], tz: ZoneInfo,
+    recipients: list[str],
+) -> int:
+    """Run dedicated Doubao searches and merge validated results into the current report."""
+    if not OUT_JSON.exists():
+        raise RuntimeError(f"找不到可补充的现有报告：{OUT_JSON}")
+
+    requested = list(dict.fromkeys(name.strip() for name in company_names if name.strip()))
+    configured = {company.get("name", "") for _group, company in iter_unique_companies(config)}
+    unknown = [name for name in requested if name not in configured]
+    if unknown:
+        raise RuntimeError(f"公司不在配置名单中：{'、'.join(unknown)}")
+
+    existing = json.loads(OUT_JSON.read_text(encoding="utf-8"))
+    window = existing.get("search_window", {})
+    end = parse_date(str(window.get("end", "")), tz)
+    start = parse_date(str(window.get("start", "")), tz)
+    end_date = end.date() if end else dt.datetime.now(tz).date()
+    start_date = start.date() if start else end_date - dt.timedelta(days=start_lookback_days(config))
+
+    print(
+        f"[1/4] 豆包定向搜索：{'、'.join(requested)}（{start_date.isoformat()} 至 {end_date.isoformat()}）",
+        flush=True,
+    )
+    all_names = {name for name in configured if name}
+    new_items, search_failures = fetch_doubao_search_intel(
+        config, start_date, end_date, tz,
+        covered_companies=all_names,
+        force_companies=set(requested),
+    )
+    print(f"[2/4] 豆包返回 {len(new_items)} 条；开始校验日期、公司和链接", flush=True)
+
+    aliases = company_aliases(config)
+    valid_items: list[IntelItem] = []
+    rejected = 0
+    for item in new_items:
+        keep, _reason = validate_item(item, aliases)
+        published = parse_date(item.published, tz)
+        in_window = bool(published and start_date <= published.date() <= end_date)
+        if not keep or not in_window or not validate_url(item.url):
+            rejected += 1
+            continue
+        item.credibility = infer_credibility(item)
+        item.verification_notes = infer_verification(item)
+        valid_items.append(item)
+
+    if not valid_items:
+        reason = "豆包搜索失败" if search_failures else "没有结果通过校验"
+        print(f"[停止] {reason}，现有报告未被修改。", flush=True)
+        for failure in search_failures:
+            print(f"  - {failure}", flush=True)
+        return 2 if search_failures else 0
+
+    print(f"[3/4] 校验通过 {len(valid_items)} 条，过滤 {rejected} 条；合并并去重", flush=True)
+    old_items = dedupe(load_existing_items(existing))
+    combined = sort_items(dedupe(old_items + valid_items))
+    added = max(0, len(combined) - len(old_items))
+    failures = list(existing.get("failures", [])) + search_failures
+    report = build_report(
+        combined, failures, config, tz, recipients,
+        search_start=start_date, search_end=end_date,
+        enable_trend_analysis=False,
+    )
+    coverage = dict(existing.get("collection_coverage", {}))
+    coverage["forced_doubao_companies"] = requested
+    supplements = dict(coverage.get("doubao_supplement", {}))
+    for name in requested:
+        supplements[name] = {
+            "returned": sum(1 for item in new_items if item.company == name),
+            "validated_new": sum(1 for item in valid_items if item.company == name),
+        }
+    coverage["doubao_supplement"] = supplements
+    report["collection_coverage"] = coverage
+    write_report_files(report, allow_empty=False)
+    print(f"[4/4] 完成：实际新增 {added} 条，HTML 已更新：{OUT_HTML}", flush=True)
+    return 0
+
+
 def crawler_rows_to_items(
     rows: list[dict[str, Any]], config: dict[str, Any], start: dt.date, tz: ZoneInfo,
 ) -> list[IntelItem]:
@@ -1780,6 +1860,7 @@ def main() -> int:
     parser.add_argument("--max-items", type=int, default=int(os.environ.get("MAX_ITEMS", "0")), help="0 means no truncation")
     parser.add_argument("--crawler-input", action="append", default=[], help="JSON/JSONL crawler file or directory; repeatable")
     parser.add_argument("--force-doubao-company", action="append", default=[], help="run a dedicated Doubao search even when RSS has covered this company; repeatable")
+    parser.add_argument("--supplement-existing-company", action="append", default=[], help="only search this company with Doubao and merge results into the existing report; repeatable")
     args = parser.parse_args()
 
     load_dotenv(ENV_PATH)
@@ -1791,6 +1872,10 @@ def main() -> int:
     if not recipients:
         env_recipients = os.environ.get("RECIPIENTS", "")
         recipients = [value.strip() for value in env_recipients.split(",") if value.strip()]
+    if args.supplement_existing_company:
+        return supplement_existing_companies(
+            args.supplement_existing_company, config, tz, recipients,
+        )
     if args.send_existing:
         if not OUT_JSON.exists():
             raise RuntimeError(f"找不到已生成的报告：{OUT_JSON}")
@@ -1821,9 +1906,13 @@ def main() -> int:
     start = today - dt.timedelta(days=lookback)
 
     # Phase 1: RSS sources
+    print(f"[1/8] 拉取通用 RSS（检索范围 {start.isoformat()} 至 {today.isoformat()}）", flush=True)
     rss_items, rss_failures = fetch_rss(config, start, tz)
+    print(f"[1/8] 通用 RSS 完成：{len(rss_items)} 条", flush=True)
     # Phase 2: Targeted company search via RSSHub
+    print("[2/8] 按完整名单检索公司 RSS", flush=True)
     targeted_items, targeted_failures = fetch_company_search(config, start, tz)
+    print(f"[2/8] 公司 RSS 完成：{len(targeted_items)} 条", flush=True)
     # Phase 3: Doubao only fills companies still uncovered after RSS.
     coverage_min = max(1, int(os.environ.get("RSS_COVERAGE_MIN_ITEMS", "1")))
     rss_counts: dict[str, int] = {}
@@ -1837,10 +1926,16 @@ def main() -> int:
         name.strip() for name in [*args.force_doubao_company, *configured_forced, *env_forced]
         if name and name.strip()
     }
+    print(
+        f"[3/8] 豆包补充 RSS 缺口；强制单独搜索：{'、'.join(sorted(forced_companies)) or '无'}",
+        flush=True,
+    )
     doubao_items, doubao_failures = fetch_doubao_search_intel(
         config, start, today, tz, covered_companies=rss_covered, force_companies=forced_companies,
     )
+    print(f"[3/8] 豆包搜索完成：{len(doubao_items)} 条", flush=True)
     # Phase 4: AMAC filing (fallback to AI Search)
+    print("[4/8] 整理协会与爬虫输入", flush=True)
     amac_items, amac_failures = fetch_amac_filing(config, start, tz)
     crawler_paths = list(args.crawler_input)
     crawler_paths.extend(filter(None, os.environ.get("CRAWLER_INPUT", "").split(os.pathsep)))
@@ -1848,6 +1943,7 @@ def main() -> int:
 
     items = sort_items(dedupe(rss_items + targeted_items + doubao_items + amac_items + crawler_items))
     failures = rss_failures + targeted_failures + doubao_failures + amac_failures
+    print(f"[4/8] 初步合并去重：{len(items)} 条", flush=True)
 
     # Fill credibility & verification notes
     for item in items:
@@ -1855,6 +1951,7 @@ def main() -> int:
         item.verification_notes = infer_verification(item)
 
     # Validate
+    print("[5/8] 校验公司归属与内容质量", flush=True)
     aliases = company_aliases(config)
     validated: list[IntelItem] = []
     validate_log: list[str] = []
@@ -1867,9 +1964,11 @@ def main() -> int:
     if validate_log:
         failures.append(f"validate_item 过滤 {len(validate_log)} 条：" + "; ".join(validate_log[:15]))
     items = validated
+    print(f"[5/8] 内容校验完成：保留 {len(items)} 条", flush=True)
 
     # Validate unique URLs concurrently. Sequential HEAD probes used to dominate
     # the whole run for large reports and made a 09:00 completion target unsafe.
+    print(f"[6/8] 并发验证 {len({item.url for item in items})} 个链接", flush=True)
     url_invalid: list[str] = []
     url_validated: list[IntelItem] = []
     url_workers = max(1, int(os.environ.get("URL_VERIFY_WORKERS", "16")))
@@ -1891,12 +1990,16 @@ def main() -> int:
     if url_invalid:
         failures.append(f"URL验证过滤 {len(url_invalid)} 条：" + "; ".join(url_invalid[:10]))
     items = url_validated
+    print(f"[6/8] 链接校验完成：保留 {len(items)} 条", flush=True)
 
     # Enrich announcement items with full content
+    print("[7/8] 读取并补充公告内容", flush=True)
     items = enrich_announcement_items(items)
+    print("[7/8] 公告处理完成", flush=True)
 
     if args.max_items > 0:
         items = items[: args.max_items]
+    print("[8/8] 生成趋势摘要和最终 HTML", flush=True)
     report = build_report(items, failures, config, tz, recipients, search_start=start, search_end=today)
     all_targets = {company.get("name", "") for _group, company in iter_unique_companies(config)}
     report["collection_coverage"] = {
@@ -1908,6 +2011,7 @@ def main() -> int:
     }
 
     write_report_files(report, allow_empty=os.environ.get("ALLOW_EMPTY_REPORT") == "1")
+    print(f"[8/8] 报告生成完成：{OUT_HTML}", flush=True)
 
     if args.send:
         sent_reports = send_item_batches(items, failures, config, tz, recipients)
