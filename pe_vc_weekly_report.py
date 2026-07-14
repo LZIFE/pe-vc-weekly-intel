@@ -1215,8 +1215,8 @@ def dedupe(items: list[IntelItem]) -> list[IntelItem]:
 
     Strategy:
     1. Exact URL dedup (highest priority)
-    2. Title similarity within same company (merge similar items, keep best info)
-    3. Keep the item with the most complete summary when merging
+    2. Cluster nearby multi-source reports by company, entity, and financing round
+    3. Select the strongest source while retaining the most complete summary
     """
     # Phase 1: exact URL dedup
     seen_urls: dict[str, IntelItem] = {}
@@ -1233,42 +1233,124 @@ def dedupe(items: list[IntelItem]) -> list[IntelItem]:
                 continue
             seen_urls[item.url] = item
 
-    # Phase 2: title similarity dedup within same company
-    from difflib import SequenceMatcher
-
     def title_similarity(a: str, b: str) -> float:
         a_clean = clean_text(a)[:50]
         b_clean = clean_text(b)[:50]
-        return SequenceMatcher(None, a_clean, b_clean).ratio()
+        return difflib.SequenceMatcher(None, a_clean, b_clean).ratio()
+
+    def published_date(item: IntelItem) -> dt.date | None:
+        try:
+            return dt.date.fromisoformat(item.published[:10])
+        except (TypeError, ValueError):
+            return None
+
+    def dates_are_near(a: IntelItem, b: IntelItem, days: int = 3) -> bool:
+        a_date = published_date(a)
+        b_date = published_date(b)
+        return bool(a_date and b_date and abs((a_date - b_date).days) <= days)
+
+    def financing_rounds(text: str) -> set[str]:
+        normalized = clean_text(text).lower().replace("＋", "+")
+        return set(re.findall(
+            r"(?:(?:pre[-－]?[a-h]|[a-h](?:\+|plus)?|天使|种子|战略|并购)轮|ipo)",
+            normalized,
+            flags=re.I,
+        ))
+
+    generic_event_terms = (
+        "完成", "宣布", "获得", "获", "融资", "投资", "募资", "资本", "基金",
+        "本轮", "新一轮", "首轮", "领投", "跟投", "参与", "公司", "企业",
+        "项目", "消息", "动态", "更新", "用于", "加速", "亿元", "万元", "万美元",
+    )
+
+    def informative_ngrams(text: str, company: str) -> set[str]:
+        normalized = clean_text(text).lower().replace(company.lower(), "")
+        for term in generic_event_terms:
+            normalized = normalized.replace(term, "")
+        grams: set[str] = set()
+        for run in re.findall(r"[\u3400-\u9fff]{4,}", normalized):
+            grams.update(run[index:index + 4] for index in range(len(run) - 3))
+        grams.update(re.findall(r"[a-z][a-z0-9+.-]{3,}", normalized))
+        return grams
+
+    def same_business_event(a: IntelItem, b: IntelItem) -> bool:
+        if not a.company or not b.company or a.company != b.company:
+            return False
+        dates_near = dates_are_near(a, b)
+        a_text = f"{a.title} {a.summary}"
+        b_text = f"{b.title} {b.summary}"
+        a_rounds = financing_rounds(a_text)
+        b_rounds = financing_rounds(b_text)
+        if a_rounds and b_rounds and not (a_rounds & b_rounds):
+            return False
+        title_overlap = informative_ngrams(a.title, a.company) & informative_ngrams(b.title, b.company)
+        body_overlap = informative_ngrams(a_text, a.company) & informative_ngrams(b_text, b.company)
+        entity_overlap = bool(title_overlap) or bool(body_overlap)
+        if title_similarity(a.title, b.title) >= 0.80 and entity_overlap:
+            # Preserve legacy behavior for undated exact-ish headlines, but do
+            # not collapse recurring dated events that happened far apart.
+            return dates_near or not published_date(a) or not published_date(b)
+        if a.company in {"行业/综合", "行业"}:
+            return False
+        if not dates_near or a.dimension != b.dimension:
+            return False
+        # One shared informative 4-gram is sufficient after company name and
+        # generic transaction language have been removed. This captures entity
+        # variants such as 灵巧手/灵心巧手 when one source names the full entity
+        # only in its summary.
+        return bool(title_overlap) or bool(body_overlap)
+
+    def source_quality(item: IntelItem) -> tuple[int, int, int, int]:
+        credibility_rank = {"高": 3, "中高": 2, "中": 1}.get(item.credibility, 0)
+        source = item.source.lower()
+        if any(token in source for token in ("官方", "公告", "协会", "政府", "交易所", "中证网", "证券时报")):
+            authority_rank = 3
+        elif any(token in source for token in ("东方财富", "新浪财经", "财联社", "21财经")):
+            authority_rank = 2
+        else:
+            authority_rank = 1
+        return credibility_rank, authority_rank, len(item.summary), len(item.title)
 
     url_deduped = list(seen_urls.values())
-    merged: list[IntelItem] = []
-    used: set[int] = set()
+    parents = list(range(len(url_deduped)))
+
+    def find(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parents[right_root] = left_root
 
     for i, a in enumerate(url_deduped):
-        if i in used:
-            continue
-        # Look for similar items from the same company
-        best = a
-        used.add(i)
-        for j, b in enumerate(url_deduped):
-            if j in used or i == j:
-                continue
-            if a.company and b.company and a.company != b.company:
-                continue
-            if title_similarity(a.title, b.title) >= 0.80:
-                used.add(j)
-                # Merge: keep longer summary, higher priority, better credibility
-                if len(b.summary) > len(best.summary):
-                    best.summary = b.summary
-                if PRIORITY_ORDER.get(b.priority, 9) < PRIORITY_ORDER.get(best.priority, 9):
-                    best.priority = b.priority
-                    best.matrix_label = b.matrix_label
-                if b.credibility in ("高", "中高") and best.credibility not in ("高", "中高"):
-                    best.credibility = b.credibility
-                # Keep the more complete title
-                if len(b.title) > len(best.title):
-                    best.title = b.title
+        for j in range(i + 1, len(url_deduped)):
+            if same_business_event(a, url_deduped[j]):
+                union(i, j)
+
+    clusters: dict[int, list[IntelItem]] = {}
+    cluster_order: list[int] = []
+    for index, item in enumerate(url_deduped):
+        root = find(index)
+        if root not in clusters:
+            clusters[root] = []
+            cluster_order.append(root)
+        clusters[root].append(item)
+
+    merged: list[IntelItem] = []
+    for root in cluster_order:
+        cluster = clusters[root]
+        best = max(cluster, key=source_quality)
+        longest_summary = max(cluster, key=lambda item: len(item.summary)).summary
+        best.summary = longest_summary
+        highest_priority = min(cluster, key=lambda item: PRIORITY_ORDER.get(item.priority, 9))
+        best.priority = highest_priority.priority
+        best.matrix_label = highest_priority.matrix_label
+        highest_credibility = max(cluster, key=lambda item: source_quality(item)[0]).credibility
+        best.credibility = highest_credibility
         merged.append(best)
 
     return merged
