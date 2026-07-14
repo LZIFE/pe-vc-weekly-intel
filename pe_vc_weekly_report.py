@@ -595,6 +595,17 @@ def parse_date(value: str | None, tz: ZoneInfo) -> dt.datetime | None:
     if not value:
         return None
     value = clean_text(value)
+    # Doubao and many modern feeds return ISO-8601 with an explicit offset
+    # (for example 2026-04-29T00:00:00+08:00) or a trailing Z. Handle these
+    # before the legacy fixed-format fallbacks below.
+    try:
+        iso_value = value[:-1] + "+00:00" if value.endswith(("Z", "z")) else value
+        parsed_iso = dt.datetime.fromisoformat(iso_value)
+        if parsed_iso.tzinfo is None:
+            return parsed_iso.replace(tzinfo=tz)
+        return parsed_iso.astimezone(tz)
+    except ValueError:
+        pass
     for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S",
                 "%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S %Z",
                 "%Y年%m月%d日"):
@@ -1786,6 +1797,18 @@ def supplement_existing_companies(
 
     print(f"[3/4] 校验通过 {len(valid_items)} 条，过滤 {rejected} 条；合并并去重", flush=True)
     old_items = dedupe(load_existing_items(existing))
+    # A previous lenient RSS pass may have assigned a company through a short
+    # alias that appeared only in discarded/truncated source text. For companies
+    # explicitly being supplemented, keep existing rows only when the rendered
+    # title or summary still contains the canonical company name.
+    stale_misattributed = [
+        item for item in old_items
+        if item.company in requested
+        and item.company.lower() not in f"{item.title} {item.summary}".lower()
+    ]
+    if stale_misattributed:
+        old_items = [item for item in old_items if item not in stale_misattributed]
+        print(f"      同时移除历史误归属 {len(stale_misattributed)} 条", flush=True)
     combined = sort_items(dedupe(old_items + valid_items))
     added = max(0, len(combined) - len(old_items))
     failures = list(existing.get("failures", [])) + search_failures
@@ -1801,6 +1824,7 @@ def supplement_existing_companies(
         supplements[name] = {
             "returned": sum(1 for item in new_items if item.company == name),
             "validated_new": sum(1 for item in valid_items if item.company == name),
+            "removed_stale_misattributed": sum(1 for item in stale_misattributed if item.company == name),
         }
     coverage["doubao_supplement"] = supplements
     report["collection_coverage"] = coverage
