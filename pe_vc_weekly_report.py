@@ -27,14 +27,22 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import cost_tracker
 
 BASE_DIR = Path(__file__).resolve().parent
 WORKSPACE_ROOT = BASE_DIR.parent
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
-from automation_core import agnes_chat, doubao_search, load_crawler_rows, load_dotenv as load_shared_dotenv
+from automation_core import (
+    agnes_chat,
+    discover_source_candidates,
+    doubao_search,
+    fetch_ai_web_package,
+    load_crawler_rows,
+    load_dotenv as load_shared_dotenv,
+    save_source_candidates,
+    submit_source_candidates,
+)
 
 load_shared_dotenv(BASE_DIR / ".env")
 load_shared_dotenv(BASE_DIR / ".agnes.env")
@@ -46,6 +54,7 @@ OUT_JSON = BASE_DIR / "pe_vc_weekly_last_report.json"
 OUT_HTML = BASE_DIR / "pe_vc_weekly_last_report.html"
 OUT_JSON_BAK = BASE_DIR / "pe_vc_weekly_last_report.json.bak"
 OUT_HTML_BAK = BASE_DIR / "pe_vc_weekly_last_report.html.bak"
+SOURCE_CANDIDATES_PATH = BASE_DIR / "source_candidates.json"
 
 REPORT_NAME = "中国TOP100私募股权GP动态周报"
 DEFAULT_RECIPIENTS: list[str] = []  # override via --recipients CLI or RECIPIENTS env var
@@ -55,23 +64,20 @@ DEFAULT_RECIPIENTS: list[str] = []  # override via --recipients CLI or RECIPIENT
 
 RSS_SOURCES = [
     # 一级市场资讯
-    {"name": "投资界", "url": "https://rsshub.app/pedaily/news", "category": "一级市场资讯"},
-    {"name": "36氪创投", "url": "https://rsshub.app/36kr/motif/startup", "category": "一级市场资讯"},
-    {"name": "36氪快讯", "url": "https://rsshub.app/36kr/news/latest", "category": "一级市场资讯"},
+    {"name": "投资界", "url": "http://localhost:1200/pedaily/news", "category": "一级市场资讯"},
+    {"name": "36氪创投", "url": "http://localhost:1200/36kr/motif/startup", "alt_urls": ["http://36kr.com/feed"], "category": "一级市场资讯"},
+    {"name": "36氪快讯", "url": "http://localhost:1200/36kr/newsflashes", "category": "一级市场资讯"},
     # 财经媒体
-    {"name": "财联社公司深度", "url": "https://rsshub.app/cls/depth/1005", "category": "财经媒体"},
-    {"name": "财联社公告电报", "url": "https://rsshub.app/cls/telegraph/announcement", "category": "财经媒体"},
-    {"name": "证券时报公司", "url": "https://rsshub.app/stcn/article/list/company", "category": "财经媒体"},
-    {"name": "证券时报金融", "url": "https://rsshub.app/stcn/article/list/finance", "category": "财经媒体"},
-    {"name": "新浪财经创投", "url": "https://rsshub.app/sina/finance/rollnews/2681", "category": "财经媒体"},
-    {"name": "新浪财经股市", "url": "https://rsshub.app/sina/finance/rollnews/2671", "category": "财经媒体"},
-    {"name": "21财经公司动态", "url": "https://rsshub.app/21caijing/channel/%E5%85%AC%E5%8F%B8/%E5%8A%A8%E6%80%81", "category": "财经媒体"},
-    {"name": "21财经公告精选", "url": "https://rsshub.app/21caijing/channel/%E6%8A%95%E8%B5%84%E9%80%9A/%E5%85%AC%E5%91%8A%E7%B2%BE%E9%80%89", "category": "财经媒体"},
-    {"name": "21财经公司洞察", "url": "https://rsshub.app/21caijing/channel/%E6%8A%95%E8%B5%84%E9%80%9A/%E5%85%AC%E5%8F%B8%E6%B4%9E%E5%AF%9F", "category": "财经媒体"},
-    {"name": "财经网滚动新闻", "url": "https://rsshub.app/caijing/roll", "category": "财经媒体"},
+    {"name": "财联社公司深度", "url": "http://localhost:1200/cls/depth/1005", "category": "财经媒体"},
+    {"name": "财联社公告电报", "url": "http://localhost:1200/cls/telegraph/announcement", "category": "财经媒体"},
+    {"name": "证券时报公司", "url": "http://localhost:1200/stcn/article/list/company", "category": "财经媒体"},
+    {"name": "证券时报金融", "url": "http://localhost:1200/stcn/article/list/finance", "category": "财经媒体"},
+    {"name": "21财经公司动态", "url": "http://localhost:1200/21caijing/company/dynamic", "category": "财经媒体"},
+    {"name": "21财经公告精选", "url": "http://localhost:1200/21caijing/company/announcement", "category": "财经媒体"},
+    {"name": "21财经公司洞察", "url": "http://localhost:1200/21caijing/company/insight", "category": "财经媒体"},
     # 央媒/权威
-    {"name": "人民网财经", "url": "https://rsshub.app/people/finance", "category": "央媒/权威"},
-    {"name": "新华网财经", "url": "http://rss.xinhuanet.com/rss/fortune.xml", "category": "央媒/权威"},
+    {"name": "人民网财经", "url": "http://localhost:1200/people/finance", "category": "央媒/权威"},
+    {"name": "新华网财经", "url": "http://rss.xinhuanet.com/rss/fortune.xml", "alt_urls": ["http://rss.xinhuanet.com/rss/native.xml"], "category": "央媒/权威"},
 ]
 
 HTML_SOURCES = [
@@ -251,17 +257,18 @@ BUSINESS_ACTION_KEYWORDS = [
     # 投资交易
     "新增投资", "领投", "跟投", "融资", "IPO", "上市",
     "并购", "收购", "退出", "回购", "对赌",
-    # 投后
-    "投后", "被投", "董事会", "创始人变更",
-    # 人事
-    "合伙人", "董事总经理", "入职", "离职", "晋升", "任命",
-    # 品牌
-    "榜单", "获奖", "排名", "论坛",
-    # 战略
-    "战略合作", "区域布局", "新赛道",
-    # 合规
-    "监管", "处罚", "备案", "检查", "处分", "警示",
+    # 投后经营与业务
+    "投后", "被投", "营收", "净利润", "订单", "中标", "量产", "产品发布",
+    # 战略与业务合作
+    "战略合作", "区域布局", "新赛道", "业务拓展", "项目落地",
 ]
+
+ROUTINE_GOVERNANCE_PATTERN = re.compile(
+    r"(?:董监高|董事|监事|独立董事|高级管理人员).{0,12}(?:辞职|离任|任命|聘任|变更|调整|换届)"
+    r"|(?:股东大会|股东会|董事会|监事会).{0,16}(?:召开|决议|会议|通知|议案)"
+    r"|独立董事述职|董事会工作报告|监事会工作报告|薪酬方案|持续督导",
+    re.I,
+)
 
 NON_BUSINESS_DISCIPLINE_KEYWORDS = [
     "纪委", "监委", "审查调查", "被开除党籍", "双开",
@@ -362,6 +369,46 @@ class IntelItem:
     channel: str
     credibility: str = "中"  # 高/中高/中
     verification_notes: str = ""  # 待核实事项
+    # 交易要素：仅对「投资组合与交易动态」由 Agnes 抽取，其余维度留空
+    project: str = ""   # 被投方 / 融资方企业名称
+    round: str = ""     # 投资轮次（天使轮 / A轮 / 战略投资 …）
+    amount: str = ""    # 融资金额（2亿元 / 5000万美元 …）
+
+
+def ai_web_package_to_items(
+    package: dict[str, Any], start: dt.date, tz: ZoneInfo,
+) -> list[IntelItem]:
+    """Adapt AI_web's packaged PE/VC rows without triggering another RSS crawl."""
+    output: list[IntelItem] = []
+    for row in package.get("items", []):
+        if not isinstance(row, dict):
+            continue
+        published_dt = parse_date(str(row.get("publishedAt", "")), tz)
+        if not published_dt or published_dt.date() < start:
+            continue
+        title = clean_text(str(row.get("title", "")))
+        summary = shorten(str(row.get("description", "")), 220)
+        url = normalize_source_url(str(row.get("url", "")))
+        company = clean_text(str(row.get("company", "")))
+        dimension = clean_text(str(row.get("dimension", "")))
+        if not title or not url or not company or not dimension:
+            continue
+        priority = clean_text(str(row.get("priority", "P2"))) or "P2"
+        output.append(IntelItem(
+            title=title,
+            url=url,
+            source=clean_text(str(row.get("source", "AI_web"))) or "AI_web",
+            published=published_dt.date().isoformat(),
+            summary=summary or title,
+            company=company,
+            company_group=clean_text(str(row.get("companyGroup", "行业动态"))) or "行业动态",
+            priority=priority if priority in PRIORITY_ORDER else "P2",
+            dimension=dimension,
+            matrix_label=clean_text(str(row.get("matrixLabel", dimension))) or dimension,
+            channel="AI_web数据包",
+            credibility=clean_text(str(row.get("credibility", "中高"))) or "中高",
+        ))
+    return output
 
 
 # ── Utility functions ──────────────────────────────────────────────────
@@ -427,7 +474,6 @@ def is_plausible_url(url: str) -> bool:
     # Known trustworthy domains - skip HTTP verification
     _trusted_domains = {"finance.eastmoney.com", "www.36kr.com", "finance.sina.com.cn",
                         "www.stcn.com", "www.cls.cn", "finance.people.com.cn",
-                        "rsshub.app", "rsshub.rssforever.com",
                         # AI Search (DeepSeek Anthropic) commonly returns these
                         "36kr.com", "pedaily.cn", "www.pedaily.cn",
                         "mp.weixin.qq.com", "chinaventure.com.cn",
@@ -516,12 +562,17 @@ def is_discipline_gossip(text: str) -> bool:
 
 _HTTP_TIMEOUT = int(os.environ.get("HTTP_TIMEOUT", "20"))
 _RSS_RETRIES = int(os.environ.get("RSS_RETRIES", "3"))
-_RSSHUB_BASE = os.environ.get("RSSHUB_BASE_URL", "https://rsshub.rssforever.com").rstrip("/")
+_RSSHUB_BASE = os.environ.get("RSSHUB_BASE_URL", "http://localhost:1200").rstrip("/")
 _RSSHUB_FALLBACK = os.environ.get("RSSHUB_FALLBACK_URL", "https://rsshub.app").rstrip("/")
 # Additional RSSHub mirrors for 403 fallback
 _RSSHUB_MIRRORS = [
     m.strip()
-    for m in os.environ.get("RSSHUB_MIRRORS", "https://rsshub.bili.xyz,https://rsshub.vercel.app").split(",")
+    for m in os.environ.get("RSSHUB_MIRRORS",
+        "https://rsshub.bili.xyz,https://rsshub.vercel.app,"
+        "https://hub.slarker.me,https://rsshub.rss.tips,"
+        "https://rsshub.pseudoyu.com,https://feed.whaty.org,"
+        "https://rss.wtff.moe"
+    ).split(",")
     if m.strip()
 ]
 
@@ -665,6 +716,10 @@ def company_aliases(config: dict[str, Any]) -> dict[str, tuple[str, str, str]]:
         if name:
             tier_name = TIER_NAMES.get(tier, "观察名单")
             aliases[name] = (name, tier_name, "")
+            for alias in company.get("aliases", []):
+                alias = str(alias).strip()
+                if alias:
+                    aliases[alias] = (name, tier_name, "")
             for alias in EXTRA_COMPANY_ALIASES.get(name, []):
                 aliases[alias] = (name, tier_name, "")
     for alias_name, (canonical, group_name, _code) in STATIC_COMPANY_ALIASES.items():
@@ -838,23 +893,41 @@ def fetch_rss(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -> tuple[lis
     items: list[IntelItem] = []
     failures: list[str] = []
     aliases = company_aliases(config)
-    rsshub_base = _RSSHUB_BASE
     rsshub_fallback = _RSSHUB_FALLBACK
-    # Determine if this source is RSSHub-based and needs primary/fallback URLs
     for src in config.get("rss_sources", RSS_SOURCES):
         url = src["url"]
         name = src["name"]
-        # For RSSHub URLs, try primary then fallback
-        fallback_url = None
-        if rsshub_base in url and rsshub_fallback != rsshub_base:
-            fallback_url = url.replace(rsshub_base, rsshub_fallback)
-        try:
-            raw = http_get_with_fallback(url, fallback_url=fallback_url, timeout=_HTTP_TIMEOUT, retries=_RSS_RETRIES)
-            batch = parse_rss_items(raw, src, tz, aliases, start, lenient=True)
-            items.extend(batch)
-        except Exception as exc:
-            failures.append(f"RSS（{name}）拉取失败：{exc}")
-        time.sleep(1.5)  # avoid RSSHub rate-limit
+        # Build mirror chain: local first, then alt_urls, then public RSSHub mirrors
+        mirrors: list[str] = []
+        mirrors.append(url)
+        # Try alt_urls (direct RSS feeds)
+        alt_urls = src.get("alt_urls", [])
+        for au in alt_urls:
+            if au not in mirrors:
+                mirrors.append(au)
+        # Fallback to public RSSHub if local fails
+        if "localhost" in url or "127.0.0.1" in url:
+            public_url = url.replace("localhost:1200", "rsshub.app").replace("127.0.0.1:1200", "rsshub.app")
+            if public_url not in mirrors:
+                mirrors.append(public_url)
+            # Also try RSSHub base/fallback/mirrors
+            for base in [rsshub_fallback] + _RSSHUB_MIRRORS:
+                candidate = public_url.replace("rsshub.app", base.replace("https://", ""))
+                if candidate not in mirrors:
+                    mirrors.append(candidate)
+        last_exc: Exception | None = None
+        for mirror_url in mirrors:
+            try:
+                raw = http_get(mirror_url, timeout=_HTTP_TIMEOUT, retries=1)
+                batch = parse_rss_items(raw, src, tz, aliases, start, lenient=True)
+                items.extend(batch)
+                break
+            except Exception as exc:
+                last_exc = exc
+                continue
+        else:
+            failures.append(f"RSS（{name}）拉取失败：{last_exc}")
+        time.sleep(1.0)  # avoid RSSHub rate-limit
     return items, failures
 
 
@@ -865,8 +938,8 @@ def fetch_company_search(config: dict[str, Any], start: dt.date, tz: ZoneInfo) -
     if os.environ.get("ENABLE_TARGETED_RSS_SEARCH", "1") != "1":
         return [], []
     aliases = company_aliases(config)
-    rsshub_base = _RSSHUB_BASE
-    rsshub_fallback = _RSSHUB_FALLBACK
+    rsshub_base = os.environ.get("RSSHUB_BASE_URL", "http://localhost:1200").rstrip("/")
+    rsshub_fallback = os.environ.get("RSSHUB_FALLBACK_URL", "https://rsshub.app").rstrip("/")
     targets = iter_unique_companies(config)
     limit = int(os.environ.get("TARGETED_RSS_COMPANY_LIMIT", "0"))
     if limit > 0:
@@ -983,6 +1056,89 @@ def enrich_announcement_items(items: list[IntelItem]) -> list[IntelItem]:
     return enriched
 
 
+# ── Transaction field extraction (Agnes) ──────────────────────────────
+
+TRANSACTION_DIMENSION = "投资组合与交易动态"
+
+
+def _parse_json_block(text: str) -> dict[str, Any] | None:
+    """Best-effort JSON parse, tolerating ```json fences and prose around it."""
+    text = (text or "").strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        match = re.search(r"\{.*\}", text, re.S)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except Exception:
+                return None
+    return None
+
+
+def _norm_round(round_str: str) -> str:
+    """Normalize round casing: 'a轮'->'A轮', 'a+轮'->'A+轮', 'ipo'->'Pre-IPO'."""
+    if not round_str:
+        return ""
+    low = clean_text(round_str).strip().lower().replace("＋", "+")
+    m = re.match(r"^(pre[-－]?)?([a-h])(?:\+|plus)?轮?$", low)
+    if m:
+        pre = "Pre-" if m.group(1) else ""
+        return f"{pre}{m.group(2).upper()}轮"
+    if "ipo" in low:
+        return "Pre-IPO"
+    return clean_text(round_str)
+
+
+def extract_transaction_fields(items: list[IntelItem], enabled: bool = True) -> list[IntelItem]:
+    """Use Agnes to populate 被投项目 / 投资轮次 / 融资金额 for 投资组合与交易动态 items.
+
+    Agnes is the SOLE judge: it reads the headline + summary and decides each field
+    on its own. Items that already carry all three fields are skipped (so cached /
+    already-processed rows cost nothing). If Agnes is unavailable, or it leaves a
+    field blank, that field simply stays empty — no regex heuristics second-guess
+    its judgment.
+    """
+    if not enabled:
+        return items
+    targets = [
+        it for it in items
+        if it.dimension == TRANSACTION_DIMENSION
+        and not (it.project and it.round and it.amount)
+    ]
+    if not targets:
+        return items
+    if not os.environ.get("AGNES_API_KEY"):
+        # Agnes 不可用：照实留空，不做任何规则兜底。
+        return items
+
+    for it in targets:
+        text = f"{it.title} {it.summary}"
+        messages = [
+            {"role": "system", "content": (
+                "你是一级市场投融资数据抽取器。请自行判断并从给定新闻中抽取字段，只输出一个 JSON 对象"
+                "（不要任何解释或代码块标记），形如："
+                "{\"project\": 被投方/融资方企业名称, \"round\": 投资轮次, \"amount\": 融资金额}。"
+                "示例：{\"project\": \"某科技公司\", \"round\": \"A轮\", \"amount\": \"2亿元\"}。"
+                "请凭你的判断决定每个字段；文中没有提及的字段就填空字符串，不要编造。"
+            )},
+            {"role": "user", "content": text[:1500]},
+        ]
+        try:
+            resp = agnes_read(messages, temperature=0.1)
+            content = resp.get("choices", [{}])[0].get("message", {}).get("content", "")
+            data = _parse_json_block(content)
+            if isinstance(data, dict):
+                it.project = clean_text(str(data.get("project", "")))
+                it.round = _norm_round(clean_text(str(data.get("round", ""))))
+                it.amount = clean_text(str(data.get("amount", "")))
+        except Exception:
+            # 信任 Agnes：调用失败就留空，不回退到任何规则。
+            pass
+    return items
+
+
+
 # ── Search and AI reading ───────────────────────────────────────────────
 
 def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
@@ -994,14 +1150,7 @@ def ai_search_chat(messages: list[dict[str, Any]], temperature: float = 0.3) -> 
 
 def agnes_read(messages: list[dict[str, Any]], temperature: float = 0.3) -> dict[str, Any]:
     """Use Agnes for all non-search reading."""
-    try:
-        result = agnes_chat(messages, temperature=temperature, max_tokens=2048)
-        usage = result.get("usage", {}) if isinstance(result, dict) else {}
-        cost_tracker.log_api_call(os.environ.get("AGNES_MODEL", "agnes-2.0-flash"), usage, status="success")
-        return result
-    except Exception as e:
-        cost_tracker.log_api_call(os.environ.get("AGNES_MODEL", "agnes-2.0-flash"), {}, status="error", error_msg=str(e))
-        raise
+    return agnes_chat(messages, temperature=temperature, max_tokens=2048)
 
 
 def make_batch_analysis_prompt(
@@ -1088,7 +1237,7 @@ def fetch_doubao_search_intel(
     covered_companies: set[str] | None = None,
     force_companies: set[str] | None = None,
 ) -> tuple[list[IntelItem], list[str]]:
-    """Use Doubao for RSS gaps and explicitly requested single-company supplements."""
+    """Use Doubao to supplement AI_web and discover sources missing from its inventory."""
     if not os.environ.get("ARK_SEARCH_API_KEY"):
         return [], ["豆包搜索跳过：缺少 ARK_SEARCH_API_KEY"]
     items: list[IntelItem] = []
@@ -1120,11 +1269,15 @@ def fetch_doubao_search_intel(
         if len(names) == 1:
             query = (
                 f"请检索 {names[0]} 在 {start.isoformat()} 至 {end.isoformat()} 期间的公开动态。"
-                "重点覆盖募资、基金设立、投资融资、退出并购、人事、战略合作与监管；"
+                "只关注募资、基金设立、投资融资、退出并购、被投项目经营和业务合作；"
+                "忽略董监高变动、股东会、董事会召开、换届、述职和例行治理公告；"
                 "返回带原文链接和发布日期、且直接提及该机构的结果。"
             )
         else:
-            query = f"目标机构：{'、'.join(names)}。主题：募资、基金设立、投资融资、退出并购、人事、战略合作、监管。"
+            query = (
+                f"目标机构：{'、'.join(names)}。主题仅限募资、基金设立、投资融资、退出并购、"
+                "被投项目经营和业务合作；排除董监高、股东会、董事会和例行治理信息。"
+            )
         try:
             rows = doubao_search(
                 query,
@@ -1195,6 +1348,10 @@ def validate_item(item: IntelItem, aliases: dict[str, tuple[str, str, str]]) -> 
     """Pre-dedupe gate: return (keep, reason)."""
     text = f"{item.title} {item.summary}"
     scope = source_scope(item.source, item.channel)
+    if ROUTINE_GOVERNANCE_PATTERN.search(item.title) and not is_business_action(item.title):
+        return False, "例行董监高/股东会/董事会治理信息"
+    if not is_business_action(text):
+        return False, "不属于业务、募资、投资、融资或并购重点"
     # Self-broadcast without business action → discard
     if scope == "self_broadcast" and not is_business_action(text):
         return False, "自播发源缺乏业务信号词"
@@ -1499,11 +1656,6 @@ def build_report(
         except Exception:
             return pub
 
-    def cred_badge(level: str) -> str:
-        colors = {"高": "#1a7f37", "中高": "#9a6700", "中": "#656d76"}
-        c = colors.get(level, "#656d76")
-        return f'<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;color:#fff;background:{c};">{esc(level)}</span>'
-
     # Generate trend analysis
     trend_text = generate_trend_analysis(items, failures) if enable_trend_analysis else ""
 
@@ -1554,101 +1706,124 @@ def build_report(
     # Conclusion text — prefer AI trend analysis, fall back to simple conclusion
     analysis_text = trend_text if trend_text else conclusion
 
-    # ── HTML header ────────────────────────────────────────────────────
+    # ── HTML header (WAIC style) ──────────────────────────────────────
     html_parts.append("""<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#F5F5F2;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Microsoft YaHei',Arial,sans-serif;color:#222;-webkit-text-size-adjust:100%%;">
-<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="padding:16px 0;background:#F5F5F2;"><tr><td>
-<div style="width:100%%;max-width:760px;margin:0 auto;background:#fff;border:1px solid #e8e6df;border-radius:10px;overflow:hidden;">
-<div style="padding:28px 24px 22px;background:#fbfaf7;border-bottom:1px solid #e8e6df;">
-<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#888;font-weight:700;">PE/VC Weekly Intel</div>
-<h1 style="font-size:25px;line-height:1.3;margin:8px 0 18px;color:#111;letter-spacing:0;">%s</h1>
-<div style="margin:-9px 0 14px;font-size:13px;color:#555;line-height:1.6;">信息检索时间范围：<strong style="color:#111;">%s</strong></div>
-<table role="presentation" cellpadding="0" cellspacing="0" width="100%%" style="margin-bottom:16px;">
-<tr>
-<td style="width:33%%;padding:8px 12px 8px 0;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">募资动态</div><div style="font-size:22px;font-weight:700;color:#1a7f37;">%d</div><div style="font-size:11px;color:#999;">条</div></td>
-<td style="width:33%%;padding:8px 12px;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">投资交易</div><div style="font-size:22px;font-weight:700;color:#1a5276;">%d</div><div style="font-size:11px;color:#999;">条</div></td>
-<td style="width:33%%;padding:8px 0 8px 12px;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">披露规模估算</div><div style="font-size:16px;font-weight:700;color:#9a6700;">%s</div></td>
-</tr>
-<tr>
-<td style="padding:8px 12px 8px 0;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">人事变动</div><div style="font-size:22px;font-weight:700;color:#656d76;">%d</div><div style="font-size:11px;color:#999;">条</div></td>
-<td style="padding:8px 12px;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">投后/合规</div><div style="font-size:22px;font-weight:700;color:#656d76;">%d</div><div style="font-size:11px;color:#999;">条</div></td>
-<td style="padding:8px 0 8px 12px;vertical-align:top;"><div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.05em;">活跃机构数</div><div style="font-size:22px;font-weight:700;color:#111;">%d</div><div style="font-size:11px;color:#999;">家</div></td>
-</tr>
-</table>
-<div style="font-size:13px;color:#444;line-height:1.8;margin-bottom:4px;"><strong>活跃赛道：</strong>%s</div>
-<div style="font-size:13px;color:#444;line-height:1.8;margin-bottom:4px;"><strong>最活跃机构：</strong>%s</div>
-<div style="font-size:13px;color:#444;line-height:1.8;margin-bottom:14px;"><strong>P0 %d 条 / P1 %d 条 / P2 %d 条</strong> · 覆盖 %d 家管理人</div>
-""" % (esc(subject), esc(date_range), fund_count, invest_count, esc(amount_str),
-       people_count, postmgmt_count + compliance_count, len(active_companies),
-       esc(sectors_str), esc(top_co_str),
-       p0_count, p1_count, p2_count, target_count))
+<body style="margin:0;background:#f4f3ef;color:#20201e;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',Arial,sans-serif;">
+<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="padding:20px 0;background:#f4f3ef;"><tr><td>
+<div style="max-width:780px;margin:0 auto;background:#fff;border:1px solid #e4e1d8;border-radius:12px;overflow:hidden;">
+<div style="padding:30px 26px 24px;background:#111;color:#fff;">
+<div style="font-size:11px;letter-spacing:.16em;color:#a9d6ff;font-weight:700;">PE/VC WEEKLY INTELLIGENCE</div>
+<h1 style="font-size:27px;line-height:1.3;margin:10px 0 12px;">%s</h1>
+<div style="font-size:13px;color:#d0d0cc;line-height:1.7;">信息检索时间范围：%s<br>覆盖 %d 家管理人，收录 %d 条有效情报</div>
+</div>
+<div style="padding:16px 26px;background:#f8f7f3;border-bottom:1px solid #e7e4db;font-size:14px;color:#333;">
+本期简报共 <strong style="font-size:18px;color:#111;">%d</strong> 条私募基金管理人动态
+</div>
+""" % (esc(subject), esc(date_range), target_count, len(items), len(items)))
 
-    # Trend analysis / conclusion
+    # Trend analysis / conclusion (研判 box, WAIC style)
     if analysis_text:
-        html_parts.append('<div style="padding:12px 16px;background:#f0ede4;border-radius:6px;font-size:13px;color:#444;line-height:1.8;">'
-                          '<strong style="color:#111;">📝 趋势分析与结论</strong><br>%s'
-                          '</div>' % esc(analysis_text))
+        html_parts.append(
+            '<div style="padding:14px 26px 4px;">'
+            '<div style="margin-top:12px;padding:8px 10px;background:#f0eee7;border-radius:6px;font-size:12px;color:#5c5548;line-height:1.6;">'
+            '<strong style="color:#333;">研判：</strong>%s</div></div>'
+            % esc(analysis_text))
 
-    html_parts.append('</div>')
+    # Compact intel stats bar
+    html_parts.append(
+        '<div style="padding:10px 26px 14px;background:#f8f7f3;font-size:13px;color:#444;line-height:1.8;border-bottom:1px solid #e7e4db;">'
+        '<strong>活跃赛道：</strong>%s<br>'
+        '<strong>最活跃机构：</strong>%s<br>'
+        '<strong>优先级：</strong>P0 %d · P1 %d · P2 %d'
+        '</div>'
+        % (esc(sectors_str), esc(top_co_str), p0_count, p1_count, p2_count))
 
     text_parts.extend([subject, "=" * 60, "",
-                       f"募资 {fund_count}条 | 投资 {invest_count}条 | 人事 {people_count}条 | 投后/合规 {postmgmt_count+compliance_count}条",
                        f"披露规模: {amount_str} | 活跃赛道: {sectors_str}",
                        f"活跃机构: {top_co_str} | P0:{p0_count} P1:{p1_count} P2:{p2_count}",
                        ""])
 
-    # ── All items as a flat list, grouped by company ─────────────────
+    # ── Items grouped by dimension (WAIC-style sections) ───────────────
+    DIMENSION_ORDER = [
+        "基金募集动态", "投资组合与交易动态", "已投项目投后管理",
+        "组织与团队建设", "品牌与行业影响力", "战略动向与合作关系", "合规与监管动态",
+    ]
+    dimension_map: dict[str, list[IntelItem]] = {}
+    for it in items:
+        dimension_map.setdefault(it.dimension or "其他", []).append(it)
+    ordered_dims = [d for d in DIMENSION_ORDER if d in dimension_map] + \
+                   [d for d in dimension_map if d not in DIMENSION_ORDER]
+
     if items:
-        html_parts.append('<div style="padding:24px;">')
-        # Build company map from all items (flat, no tier grouping)
-        company_map: dict[str, list[IntelItem]] = {}
-        for it in items:
-            company_map.setdefault(it.company, []).append(it)
-        for company_name in sorted(company_map.keys(), key=lambda x: (0 if x == "德同资本" else 1, x)):
-            company_items = company_map[company_name]
+        for dim in ordered_dims:
+            dim_items = sort_items(dimension_map[dim])
             html_parts.append(
-                '<div style="margin:18px 0 6px;font-size:15px;font-weight:700;color:#1a5276;">'
-                '%s <span style="font-size:12px;color:#888;font-weight:400;">(%d 条)</span></div>'
-                % (esc(company_name), len(company_items)))
-            text_parts.append(f"  【{company_name}】{len(company_items)} 条")
-            for item in company_items:
+                '<div style="padding:22px 26px 4px;">'
+                '<div style="font-size:17px;font-weight:750;border-bottom:2px solid #171717;padding-bottom:8px;">'
+                '%s <span style="font-size:13px;color:#888;font-weight:400;">(%d 条)</span></div></div>'
+                % (esc(dim), len(dim_items)))
+            html_parts.append('<div style="padding:8px 26px 4px;">')
+            text_parts.append(f"  【{dim}】{len(dim_items)} 条")
+            for item in dim_items:
                 url_href = esc_url_attr(item.url)
                 url_display = esc(item.url)
                 title = esc(item.title)
                 source = esc(item.source or "")
+                company = esc(item.company or "—")
                 summary = bold_company(esc(item.summary or ""), esc(item.company))
                 pub_str = fmt_published(item.published)
                 prio = item.priority
-                dim = esc(item.dimension)
                 label = esc(item.matrix_label)
-                cred = item.credibility
-                verif = esc(item.verification_notes)
-
                 star = "⭐⭐⭐" if prio == "P0" else ("⭐⭐" if prio == "P1" else "⭐")
-                badge = cred_badge(cred)
 
-                verif_html = ""
-                if verif:
-                    verif_html = f'<div style="margin-top:6px;font-size:12px;color:#b35900;">⚠ 待核实：{verif}</div>'
+                # 交易要素结构化展示（仅交易类条目，由 Agnes 抽取）
+                trans_html = ""
+                if item.dimension == TRANSACTION_DIMENSION and (item.project or item.round or item.amount):
+                    tparts = []
+                    if item.company:
+                        tparts.append(f"投资机构：{esc(item.company)}")
+                    if item.project:
+                        tparts.append(f"被投项目：{esc(item.project)}")
+                    if item.round:
+                        tparts.append(f"轮次：{esc(item.round)}")
+                    if item.amount:
+                        tparts.append(f"金额：{esc(item.amount)}")
+                    trans_html = (
+                        '<div style="font-size:13.5px;color:#174f70;font-weight:700;line-height:1.5;'
+                        'margin:-2px 0 9px;padding:6px 10px;background:#eef4f9;border-left:3px solid #174f70;border-radius:4px;">'
+                        f'{" ｜ ".join(tparts)}</div>'
+                    )
 
                 html_parts.append(
-                    '<div style="background:#fbfaf7;border:1px solid #e8e6df;border-radius:8px;padding:14px 16px;margin-bottom:10px;">'
-                    '<div style="font-size:13px;color:#888;margin-bottom:4px;">%s · %s %s</div>'
-                    '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">'
-                    '<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#1a5276;text-decoration:none;">%s</a></div>'
-                    '<div style="font-size:13px;color:#555;line-height:1.65;">%s</div>'
-                    '<div style="margin-top:8px;display:inline-block;background:#f0ede4;border-radius:4px;padding:2px 10px;font-size:12px;color:#777;">%s %s %s</div>'
+                    '<div style="border:1px solid #e6e2d9;border-radius:9px;padding:15px 16px;margin-bottom:11px;background:#fcfbf8;">'
+                    '<div style="font-size:12px;color:#777;margin-bottom:6px;">%s · %s · %s</div>'
+                    '<div style="font-size:16px;font-weight:750;line-height:1.45;margin-bottom:7px;">'
+                    '<a href="%s" target="_blank" rel="noopener noreferrer" style="color:#174f70;text-decoration:none;">%s</a></div>'
                     '%s'
+                    '<div style="font-size:13px;color:#4f4f4b;line-height:1.7;">%s</div>'
                     '</div>'
-                    % (pub_str, esc(source), badge, url_href, title, summary, star, dim, label, verif_html))
+                    % (pub_str, source, company, url_href, title, trans_html, summary))
 
+                trans_text = ""
+                if item.dimension == TRANSACTION_DIMENSION and (item.project or item.round or item.amount):
+                    tparts = []
+                    if item.company:
+                        tparts.append(f"投资机构:{item.company}")
+                    if item.project:
+                        tparts.append(f"被投项目:{item.project}")
+                    if item.round:
+                        tparts.append(f"轮次:{item.round}")
+                    if item.amount:
+                        tparts.append(f"金额:{item.amount}")
+                    trans_text = " | ".join(tparts)
                 text_parts.append(
                     f"     {star} {title}\n"
-                    f"       {source} · {pub_str} · 可信度:{cred}\n"
-                    f"       {summary}\n"
+                    f"       {source} · {company} · {pub_str}\n"
+                    + (f"       交易要素：{trans_text}\n" if trans_text else "")
+                    + f"       {summary}\n"
                     f"       {url_display}\n")
-        html_parts.append("</div>")
+            html_parts.append("</div>")
     else:
         html_parts.append(
             '<div style="padding:26px 24px;font-size:15px;line-height:1.7;color:#555;">'
@@ -1660,9 +1835,9 @@ def build_report(
     ) or "暂无有效来源条目"
     # ── Stats footer ────────────────────────────────────────────────
     html_parts.append(
-        '<div style="padding:20px 24px;background:#fbfaf7;font-size:12px;line-height:1.7;color:#888;">'
-        '<strong style="color:#222;">数据口径</strong><br>%s %s'
-        '<br><br><strong style="color:#222;">本次实际来源</strong><br>%s'
+        '<div style="padding:20px 26px;background:#faf9f5;font-size:12px;line-height:1.7;color:#5c5548;">'
+        '<strong style="color:#333;">数据口径</strong><br>%s %s'
+        '<br><br><strong style="color:#333;">本次实际来源</strong><br>%s'
         '</div>'
         % (esc(intro), esc(stats), esc(channel_line)))
     text_parts.append("")
@@ -1892,6 +2067,7 @@ def supplement_existing_companies(
         old_items = [item for item in old_items if item not in stale_misattributed]
         print(f"      同时移除历史误归属 {len(stale_misattributed)} 条", flush=True)
     combined = sort_items(dedupe(old_items + valid_items))
+    combined = extract_transaction_fields(combined)
     added = max(0, len(combined) - len(old_items))
     failures = list(existing.get("failures", [])) + search_failures
     report = build_report(
@@ -1962,8 +2138,8 @@ def main() -> int:
     parser.add_argument("--send-existing", action="store_true", help="rebuild and send the latest generated report without collecting again")
     parser.add_argument("--dry-run", action="store_true", help="generate without sending")
     parser.add_argument("--recipients", default=",".join(DEFAULT_RECIPIENTS), help="comma-separated recipient emails")
-    parser.add_argument("--lookback-days", type=int, default=30)
-    parser.add_argument("--max-items", type=int, default=int(os.environ.get("MAX_ITEMS", "0")), help="0 means no truncation")
+    parser.add_argument("--lookback-days", type=int, default=7)
+    parser.add_argument("--max-items", type=int, default=int(os.environ.get("MAX_ITEMS", "10")), help="0 means no truncation; default 10 for light testing")
     parser.add_argument("--crawler-input", action="append", default=[], help="JSON/JSONL crawler file or directory; repeatable")
     parser.add_argument("--force-doubao-company", action="append", default=[], help="run a dedicated Doubao search even when RSS has covered this company; repeatable")
     parser.add_argument("--supplement-existing-company", action="append", default=[], help="only search this company with Doubao and merge results into the existing report; repeatable")
@@ -1974,6 +2150,7 @@ def main() -> int:
     load_dotenv(WORKSPACE_ROOT / ".search.env")
     config = load_config()
     tz = ZoneInfo(config.get("timezone", "Asia/Shanghai"))
+    modes = config.get("source_modes", {})
     recipients = [value.strip() for value in args.recipients.split(",") if value.strip()]
     if not recipients:
         env_recipients = os.environ.get("RECIPIENTS", "")
@@ -1987,6 +2164,8 @@ def main() -> int:
             raise RuntimeError(f"找不到已生成的报告：{OUT_JSON}")
         existing = json.loads(OUT_JSON.read_text(encoding="utf-8"))
         items = load_existing_items(existing)
+        # 抽取交易要素（已保存的条目会被跳过，几乎零成本）
+        items = extract_transaction_fields(items)
         window = existing.get("search_window", {})
         try:
             existing_start = dt.date.fromisoformat(str(window.get("start", "")))
@@ -2010,46 +2189,56 @@ def main() -> int:
     lookback = int(os.environ.get("SEARCH_DAYS", str(args.lookback_days)))
     today = dt.datetime.now(tz).date()
     start = today - dt.timedelta(days=lookback)
+    if modes.get("doubao", True) and not os.environ.get("ARK_SEARCH_API_KEY"):
+        raise RuntimeError("automation 要求每次采集都调用豆包；缺少 ARK_SEARCH_API_KEY（或设置 source_modes.doubao=false 关闭）")
 
-    # Phase 1: RSS sources
-    print(f"[1/8] 拉取通用 RSS（检索范围 {start.isoformat()} 至 {today.isoformat()}）", flush=True)
-    rss_items, rss_failures = fetch_rss(config, start, tz)
-    print(f"[1/8] 通用 RSS 完成：{len(rss_items)} 条", flush=True)
-    # Phase 2: Targeted company search via RSSHub
-    print("[2/8] 按完整名单检索公司 RSS", flush=True)
-    targeted_items, targeted_failures = fetch_company_search(config, start, tz)
-    print(f"[2/8] 公司 RSS 完成：{len(targeted_items)} 条", flush=True)
-    # Phase 3: Doubao only fills companies still uncovered after RSS.
-    coverage_min = max(1, int(os.environ.get("RSS_COVERAGE_MIN_ITEMS", "1")))
-    rss_counts: dict[str, int] = {}
-    for item in rss_items + targeted_items:
-        if item.company and item.company != "行业/综合":
-            rss_counts[item.company] = rss_counts.get(item.company, 0) + 1
-    rss_covered = {name for name, count in rss_counts.items() if count >= coverage_min}
-    configured_forced = config.get("force_doubao_companies", [])
-    env_forced = os.environ.get("DOUBAO_FORCE_COMPANIES", "").split(",")
-    forced_companies = {
-        name.strip() for name in [*args.force_doubao_company, *configured_forced, *env_forced]
-        if name and name.strip()
-    }
-    print(
-        f"[3/8] 豆包补充 RSS 缺口；强制单独搜索：{'、'.join(sorted(forced_companies)) or '无'}",
-        flush=True,
-    )
-    doubao_items, doubao_failures = fetch_doubao_search_intel(
-        config, start, today, tz, covered_companies=rss_covered, force_companies=forced_companies,
-    )
-    print(f"[3/8] 豆包搜索完成：{len(doubao_items)} 条", flush=True)
-    # Phase 4: AMAC filing (fallback to AI Search)
-    print("[4/8] 整理协会与爬虫输入", flush=True)
-    amac_items, amac_failures = fetch_amac_filing(config, start, tz)
+    # Phase 1: AI_web is the single RSS collector and packaged-data source.
+    print(f"[1/8] 下载 AI_web 私募数据包（{start.isoformat()} 至 {today.isoformat()}）", flush=True)
+    package = fetch_ai_web_package("private-equity", days=lookback)
+    package_items = ai_web_package_to_items(package, start, tz)
+    print(f"[1/8] AI_web 数据包完成：{len(package_items)} 条", flush=True)
+    # Phase 2: Doubao supplemental search + source discovery (optional).
+    if not modes.get("doubao", True):
+        print("[2/8] 豆包搜索已关闭（source_modes.doubao=false），跳过", flush=True)
+        doubao_items, doubao_failures = [], []
+        source_candidates, accepted_candidates, candidate_error = [], 0, None
+        forced_companies = set()
+    else:
+        print("[2/8] 豆包补充检索并发现 AI_web 尚未覆盖的来源", flush=True)
+        configured_forced = config.get("force_doubao_companies", [])
+        env_forced = os.environ.get("DOUBAO_FORCE_COMPANIES", "").split(",")
+        forced_companies = {
+            name.strip() for name in [*args.force_doubao_company, *configured_forced, *env_forced]
+            if name and name.strip()
+        }
+        print(f"[2/8] 强制单独搜索：{'、'.join(sorted(forced_companies)) or '无'}", flush=True)
+        doubao_items, doubao_failures = fetch_doubao_search_intel(
+            config, start, today, tz, covered_companies=set(), force_companies=forced_companies,
+        )
+        if not doubao_items and any("失败" in failure for failure in doubao_failures):
+            raise RuntimeError("豆包补充检索未成功：" + doubao_failures[0])
+        candidate_rows = [
+            {"title": item.title, "url": item.url, "source": item.source}
+            for item in doubao_items
+        ]
+        source_candidates = discover_source_candidates("private-equity", candidate_rows, package)
+        save_source_candidates(SOURCE_CANDIDATES_PATH, source_candidates)
+        accepted_candidates, candidate_error = submit_source_candidates(source_candidates)
+        print(
+            f"[2/8] 豆包搜索完成：{len(doubao_items)} 条；新增来源候选 {len(source_candidates)} 个，云端接收 {accepted_candidates} 个",
+            flush=True,
+        )
+    # Phase 3: Optional user-supplied crawler drops remain additive.
+    print("[3/8] 整理可选爬虫输入", flush=True)
     crawler_paths = list(args.crawler_input)
     crawler_paths.extend(filter(None, os.environ.get("CRAWLER_INPUT", "").split(os.pathsep)))
     crawler_items = crawler_rows_to_items(load_crawler_rows(crawler_paths), config, start, tz)
 
-    items = sort_items(dedupe(rss_items + targeted_items + doubao_items + amac_items + crawler_items))
-    failures = rss_failures + targeted_failures + doubao_failures + amac_failures
-    print(f"[4/8] 初步合并去重：{len(items)} 条", flush=True)
+    items = sort_items(dedupe(package_items + doubao_items + crawler_items))
+    failures = list(doubao_failures)
+    if candidate_error:
+        failures.append(candidate_error)
+    print(f"[3/8] 初步合并去重：{len(items)} 条", flush=True)
 
     # Fill credibility & verification notes
     for item in items:
@@ -2057,7 +2246,7 @@ def main() -> int:
         item.verification_notes = infer_verification(item)
 
     # Validate
-    print("[5/8] 校验公司归属与内容质量", flush=True)
+    print("[4/8] 校验公司归属与内容质量", flush=True)
     aliases = company_aliases(config)
     validated: list[IntelItem] = []
     validate_log: list[str] = []
@@ -2070,15 +2259,16 @@ def main() -> int:
     if validate_log:
         failures.append(f"validate_item 过滤 {len(validate_log)} 条：" + "; ".join(validate_log[:15]))
     items = validated
-    print(f"[5/8] 内容校验完成：保留 {len(items)} 条", flush=True)
+    print(f"[4/8] 内容校验完成：保留 {len(items)} 条", flush=True)
 
     # Validate unique URLs concurrently. Sequential HEAD probes used to dominate
     # the whole run for large reports and made a 09:00 completion target unsafe.
-    print(f"[6/8] 并发验证 {len({item.url for item in items})} 个链接", flush=True)
+    urls_to_probe = list(dict.fromkeys(item.url for item in items if item.channel != "AI_web数据包"))
+    print(f"[5/8] 验证 {len(urls_to_probe)} 个豆包/外部补充链接；AI_web 链接复用已验证结果", flush=True)
     url_invalid: list[str] = []
     url_validated: list[IntelItem] = []
     url_workers = max(1, int(os.environ.get("URL_VERIFY_WORKERS", "16")))
-    unique_urls = list(dict.fromkeys(item.url for item in items))
+    unique_urls = urls_to_probe
     url_status: dict[str, bool] = {}
     with ThreadPoolExecutor(max_workers=min(url_workers, len(unique_urls) or 1)) as executor:
         future_urls = {executor.submit(validate_url, url): url for url in unique_urls}
@@ -2089,35 +2279,43 @@ def main() -> int:
             except Exception:
                 url_status[url] = False
     for item in items:
-        if url_status.get(item.url, False):
+        if item.channel == "AI_web数据包" or url_status.get(item.url, False):
             url_validated.append(item)
         else:
             url_invalid.append(f"URL不可访问 [{item.company}] {item.title[:50]} — {item.url}")
     if url_invalid:
         failures.append(f"URL验证过滤 {len(url_invalid)} 条：" + "; ".join(url_invalid[:10]))
     items = url_validated
-    print(f"[6/8] 链接校验完成：保留 {len(items)} 条", flush=True)
+    print(f"[5/8] 链接校验完成：保留 {len(items)} 条", flush=True)
 
     # Enrich announcement items with full content
-    print("[7/8] 读取并补充公告内容", flush=True)
-    items = enrich_announcement_items(items)
-    print("[7/8] 公告处理完成", flush=True)
+    print("[6/8] 读取并补充非 AI_web 公告内容", flush=True)
+    packaged_items = [item for item in items if item.channel == "AI_web数据包"]
+    supplemental_items = [item for item in items if item.channel != "AI_web数据包"]
+    items = sort_items(packaged_items + enrich_announcement_items(supplemental_items))
+    # 抽取交易要素（被投项目 / 轮次 / 金额），供标题结构化展示
+    items = extract_transaction_fields(items)
+    print("[6/8] 公告处理完成", flush=True)
 
     if args.max_items > 0:
         items = items[: args.max_items]
-    print("[8/8] 生成趋势摘要和最终 HTML", flush=True)
+    print("[7/8] 生成趋势摘要和最终 HTML", flush=True)
     report = build_report(items, failures, config, tz, recipients, search_start=start, search_end=today)
     all_targets = {company.get("name", "") for _group, company in iter_unique_companies(config)}
+    package_companies = {item.company for item in package_items if item.company}
     report["collection_coverage"] = {
         "configured_companies": len(all_targets),
-        "rss_covered_companies": len(rss_covered & all_targets),
-        "doubao_gap_companies": len(all_targets - rss_covered),
-        "strategy": "rss_first_doubao_gap_fill",
+        "ai_web_package_items": len(package_items),
+        "ai_web_covered_companies": len(package_companies & all_targets),
+        "doubao_supplement_items": len(doubao_items),
+        "source_candidates": len(source_candidates),
+        "source_candidates_cloud_accepted": accepted_candidates,
+        "strategy": "ai_web_package_only" if not modes.get("doubao", True) else "ai_web_package_plus_doubao_source_discovery",
         "forced_doubao_companies": sorted(forced_companies),
     }
 
     write_report_files(report, allow_empty=os.environ.get("ALLOW_EMPTY_REPORT") == "1")
-    print(f"[8/8] 报告生成完成：{OUT_HTML}", flush=True)
+    print(f"[7/8] 报告生成完成：{OUT_HTML}", flush=True)
 
     if args.send:
         sent_reports = send_item_batches(items, failures, config, tz, recipients)

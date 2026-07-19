@@ -1,2279 +1,4515 @@
 {
   "report_name": "一级市场私募基金管理人竞争情报周报",
   "timezone": "Asia/Shanghai",
-  "lookback_days": 30,
+  "lookback_days": 7,
   "fallback_days": 30,
   "force_doubao_companies": [
     "德同资本"
   ],
   "recipients": [
-    "readylinoffice@gmail.com",
-    "roxan.tong@dtdyfund.com"
+    "daniel.lu@dtcap.com",
+    "jing.guo@dtdyfund.com",
+    "roxan.tong@dtdyfund.com",
+    "alison.lee@dtdyfund.com"
   ],
   "source_modes": {
-    "rss": true,
+    "ai_web": true,
+    "rss": false,
     "news_api": false,
     "cninfo": false,
+    "doubao": false,
     "agnes": true,
     "manual": false
   },
   "rss_sources": [
     {
-      "name": "投资界",
-      "url": "https://rsshub.rssforever.com/pedaily/news",
-      "category": "一级市场资讯"
-    },
-    {
-      "name": "36氪创投",
-      "url": "https://rsshub.rssforever.com/36kr/motif/startup",
-      "category": "一级市场资讯"
-    },
-    {
-      "name": "36氪快讯",
-      "url": "https://rsshub.rssforever.com/36kr/news/latest",
-      "category": "一级市场资讯"
-    },
-    {
       "name": "财联社公司深度",
-      "url": "https://rsshub.rssforever.com/cls/depth/1005",
+      "url": "http://localhost:1200/cls/depth/1005",
       "category": "财经媒体"
     },
     {
       "name": "财联社公告电报",
-      "url": "https://rsshub.rssforever.com/cls/telegraph/announcement",
+      "url": "http://localhost:1200/cls/telegraph/announcement",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社公司",
+      "url": "http://localhost:1200/cls/depth/1006",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社环球",
+      "url": "http://localhost:1200/cls/depth/1007",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社金融",
+      "url": "http://localhost:1200/cls/depth/1032",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社基金",
+      "url": "http://localhost:1200/cls/depth/1110",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社科创",
+      "url": "http://localhost:1200/cls/depth/1111",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社券商",
+      "url": "http://localhost:1200/cls/depth/1118",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社汽车",
+      "url": "http://localhost:1200/cls/depth/1119",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社期货",
+      "url": "http://localhost:1200/cls/depth/1124",
+      "category": "财经媒体"
+    },
+    {
+      "name": "财联社电报",
+      "url": "http://localhost:1200/cls/telegraph",
       "category": "财经媒体"
     },
     {
       "name": "证券时报公司",
-      "url": "https://rsshub.rssforever.com/stcn/article/list/company",
+      "url": "http://localhost:1200/stcn/article/list/company",
       "category": "财经媒体"
     },
     {
       "name": "证券时报金融",
-      "url": "https://rsshub.rssforever.com/stcn/article/list/finance",
+      "url": "http://localhost:1200/stcn/article/list/finance",
       "category": "财经媒体"
     },
     {
-      "name": "新浪财经创投",
-      "url": "https://rsshub.rssforever.com/sina/finance/rollnews/2681",
+      "name": "证券时报股市",
+      "url": "http://localhost:1200/stcn/article/list/gs",
       "category": "财经媒体"
     },
     {
-      "name": "新浪财经股市",
-      "url": "https://rsshub.rssforever.com/sina/finance/rollnews/2671",
+      "name": "华尔街见闻全球",
+      "url": "http://localhost:1200/wallstreetcn/news/global",
       "category": "财经媒体"
     },
     {
-      "name": "21财经公司动态",
-      "url": "https://rsshub.rssforever.com/21caijing/channel/%E5%85%AC%E5%8F%B8/%E5%8A%A8%E6%80%81",
+      "name": "华尔街见闻实时",
+      "url": "http://localhost:1200/wallstreetcn/live",
       "category": "财经媒体"
     },
     {
-      "name": "21财经公告精选",
-      "url": "https://rsshub.rssforever.com/21caijing/channel/%E6%8A%95%E8%B5%84%E9%80%9A/%E5%85%AC%E5%91%8A%E7%B2%BE%E9%80%89",
-      "category": "财经媒体"
-    },
-    {
-      "name": "21财经公司洞察",
-      "url": "https://rsshub.rssforever.com/21caijing/channel/%E6%8A%95%E8%B5%84%E9%80%9A/%E5%85%AC%E5%8F%B8%E6%B4%9E%E5%AF%9F",
-      "category": "财经媒体"
-    },
-    {
-      "name": "财经网滚动新闻",
-      "url": "https://rsshub.rssforever.com/caijing/roll",
+      "name": "第一财经",
+      "url": "http://localhost:1200/yicai/news",
       "category": "财经媒体"
     },
     {
       "name": "人民网财经",
-      "url": "https://rsshub.rssforever.com/people/finance",
+      "url": "http://localhost:1200/people/finance",
       "category": "央媒/权威"
     },
     {
       "name": "新华网财经",
-      "url": "https://rsshub.rssforever.com/rss/xinhuanet/fortune",
+      "url": "http://rss.xinhuanet.com/rss/fortune.xml",
+      "alt_urls": [
+        "http://rss.xinhuanet.com/rss/native.xml"
+      ],
       "category": "央媒/权威"
+    },
+    {
+      "name": "新浪财经滚动",
+      "url": "http://localhost:1200/sina/finance/rollnews",
+      "category": "财经媒体"
+    },
+    {
+      "name": "36氪(直连)",
+      "url": "https://36kr.com/feed",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "Readhub热门话题",
+      "url": "http://localhost:1200/readhub",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "Readhub每日早报",
+      "url": "http://localhost:1200/readhub/daily",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "晚点LatePost",
+      "url": "http://localhost:1200/latepost",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "创业邦创投",
+      "url": "http://localhost:1200/cyzone/14",
+      "category": "一级市场资讯"
+    },
+    {
+      "name": "财新最新",
+      "url": "http://localhost:1200/caixin/latest",
+      "category": "财经媒体"
+    },
+    {
+      "name": "巴伦周刊中文版",
+      "url": "http://localhost:1200/barronschina",
+      "category": "财经媒体"
     }
   ],
   "categories": {
     "核心机构": [
       {
         "name": "德同资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "苏创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "西高投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "锡创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "中金资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "云晖资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "五源资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "保利资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "元璟资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "元禾控股",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "光大控股",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "凯辉基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "加华资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "北汽产投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "华润资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "华芯投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "博裕投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "君联资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "启明创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国寿股权",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国投创业",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国投创合",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国投创益",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国投招商",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国新基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国方创新",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国盛资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国科嘉和",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国科投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "基石资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "复星创富",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "天图投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "工控资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "广汽资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "建银国际",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "德弘资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "愉悦资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "投控东海",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "招商资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "新微资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "方广资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "方正和生",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "松禾资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "浦耀信晔",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "海通开元",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "深高新投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "渶策资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "源码资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "祥峰投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "策源资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "粤财基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "红杉中国",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "纪源资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "经纬创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "联想创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "腾讯投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "诚通基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "达晨财智",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "金浦投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "金石投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "钟鼎资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "长江创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "顺为资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "高瓴投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "鲁信创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "黑蚁资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "鼎晖投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "CMC资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "CPE源峰",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "IDG资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "临港科创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "北极光创投",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "深创投集团",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "中信建投资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "中电智慧基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "人保资本股权",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "华业天成资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "华泰紫金投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "合肥产投资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "复星锐正资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "广州产投资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "招银国际资本",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "粤科金融集团",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "越秀产业基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "上海自贸区基金",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国家电投创新投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "国泰君安创新投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "建信(北京)投资",
-        "market": "private",
-        "tier": 1
-      },
-      {
-        "name": "浦东科创/海望资本",
+        "aliases": [],
         "market": "private",
         "tier": 1
       }
     ],
     "活跃机构": [
       {
-        "name": "险峰",
+        "name": "ATM Capital",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "DCM",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "KKR",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中网投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "京国瑞",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "淡马锡",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "福创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "一村资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上实资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "东南基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "东方嘉富",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "东方富海",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中信聚信",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中信资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中信金石",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中原联创",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中平资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中电基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中科创星",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中移资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中芯聚源",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中车资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中鑫资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "丰年资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "临芯投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "九鼎投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "云九资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "云启资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "云锋基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "亦庄国投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "众为资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "众行资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "优山投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "倚锋资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "健壹资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "元生创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "元禾厚望",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "元禾璞华",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "光速光合",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "兴富资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "兴证资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "凯联资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "凯风创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "分享投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "创钰投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "前海方舟",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "力合创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "力鼎资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "北京华控",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "十月资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "千乘资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华宝股权",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华平投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华控基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华映资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华登国际",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华盖资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华睿投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "华金资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "南通投管",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "博华资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "博源资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "博远资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "厦门创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "友财投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "合肥高投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "同创伟业",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "君桐资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "君盛投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "启承资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "和高资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "哈勃投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "唐兴资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "啟赋资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "嘉御资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国中资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国信弘盛",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国金鼎兴",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国鑫创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国鑫投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国际创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "大钲资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "天创资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "天堂硅谷",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "天风天睿",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "天鹰资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "太平创新",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "安芯投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "容亿投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "尚颀资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "工银资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "平安资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广发乾和",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广发信德",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广州基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "康桥资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "弘毅投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "张江浩珩",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "张江科投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "德福资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "恒健资产",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "恒旭资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "恩泽基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "惠华基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "招银国际",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "斯道资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "新鼎资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "方源资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "时代伯乐",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "春华资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "晨道资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "普华资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "普罗资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "朝希资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "本草资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "杏泽资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "架桥资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "正海资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "毅达资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "沄柏资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "泰达科投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "济峰资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "浙商创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "浙江金控",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "浦科投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "海尔资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "海松资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "海达投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "涌铧投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "深担创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "清松资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "清源投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "源创多盈",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "瑞力投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "电科投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "盈峰投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "盈港资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "盈科资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "盛世投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "盛宇投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "相城金控",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "真格基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "磐霖资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "礼来亚洲",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "穗开投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "红点中国",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "线性资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "维梧资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "绿金投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "美团龙珠",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "联创资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "联想之星",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "联新资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "聚合资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "蓝驰创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "蔚来资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "蜂巧资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "财通资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "赛泽资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "超越摩尔",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "软银中国",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "辰德资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "远翼投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "远致创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "远致富海",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "道彤投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "金镒资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "金雨茂物",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "金鼎资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "鋆昊资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "钛信资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "阿里资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "隐山资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "首钢基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "高榕创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "高榕资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "麦星投资",
+        "name": "Advent安宏资本",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
         "name": "BAI资本",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "KIP资本",
+        "name": "BV百度风投",
+        "aliases": [
+          "北京百度投资管理有限公司"
+        ],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "中关村资本",
+        "name": "CMC资本",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "中小担创投",
+        "name": "CPE源峰",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "中科院资本",
+        "name": "DCM",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "创东方投资",
+        "name": "GGV纪源资本",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "大湾区基金",
+        "name": "Genesis 元生资本",
+        "aliases": [
+          "元生资本"
+        ],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "常州高新投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "招商局创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "摩根士丹利",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "朗玛峰创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "正心谷资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "武岳峰科创",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "深投控资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "盛世景集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "紫金港资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "苏高新创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "金沙江创投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "高特佳投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上海国盛资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上海科创基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上海科创集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上海联和投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "兴业国信资管",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "北京泰康投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "厦门联和资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广东恒健控股",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广州金控基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "建发新兴投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "成都产投集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "招商致远资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "朗姿韩亚资管",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "海富产业基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "湖南高新纵横",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "赛富投资基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "软银中国资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "道禾长期投资",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "阳光融汇资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "创世伙伴CCV",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广州开发区基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "张家港经开国投",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "成都科创投集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "欧瑞泽投资集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上海国投孚腾资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "上海生物医药基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "中关村科学城公司",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "小米长江产业基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "长江产业投资集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "南京市创新投资集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "广州开发区基金集团",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "Genesis元生资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "国家制造业转型升级基金",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "Monolith砺思资本",
-        "market": "private",
-        "tier": 2
-      },
-      {
-        "name": "LongRiver江远投资",
+        "name": "IDG资本",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
         "name": "InnoVen Capital",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "KIP资本",
+        "aliases": [
+          "Korea Investment Partners"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "KKR",
+        "aliases": [],
         "market": "private",
         "tier": 2
       },
       {
         "name": "L Catterton路威凯腾",
+        "aliases": [
+          "L Catterton"
+        ],
         "market": "private",
         "tier": 2
       },
       {
-        "name": "LYFE Capital洲嶺资本",
+        "name": "L2F光源创业者基金",
+        "aliases": [],
         "market": "private",
         "tier": 2
-      }
-    ],
-    "观察名单": [
+      },
+      {
+        "name": "LYFE Capital 洲嶺资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "LongRiver江远投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "Monolith砺思资本",
+        "aliases": [
+          "砺思资本"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "PAG",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "TCL创投",
+        "aliases": [
+          "TCL股权投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "TPG",
+        "aliases": [
+          "TPG Capital"
+        ],
+        "market": "private",
+        "tier": 2
+      },
       {
         "name": "XVC",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "南创投",
+        "name": "阿里巴巴",
+        "aliases": [
+          "阿里巴巴战略投资部"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "川创投",
+        "name": "阿里资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "常金控",
+        "name": "安芙兰资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "张创投",
+        "name": "安徽产投",
+        "aliases": [],
         "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "昌发展",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "梁创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "上海联和",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "两江资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "中交资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "九合创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "五矿创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "先进资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "兴湘资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "兴证投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "创新工场",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "北京国管",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "华创资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "华福资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "华鑫投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "合肥产投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "吴江创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国方资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国生资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国经资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国舜投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国铸资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国际国方",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "奇绩创坛",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "孚腾资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "富浙基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "峰瑞资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "广开基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "弘晖基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "弘章投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "新尚资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "明势创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "明势资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "曦域资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "杭实资管",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "杭州资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "梅花创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "正合资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "汇川产投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "泰恒投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "浦东创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "清智资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "渝富基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "熙诚金睿",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "番茄资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "科金控股",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "紫金科创",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "绿洲资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "耀途资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "航发基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "豫资集团",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "财鑫资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "银鞍资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "锦秋基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "雷石投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "青山资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "靖亚资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "顺禧基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "高成投资",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "中电科基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "南山战新投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "哈创投集团",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "宝捷会基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "张创投集团",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "成都科创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "扬子江基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "东方证券资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "创世伙伴创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "厦门国升发展",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "厦门火炬创投",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "合肥建投资本",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国信创新股权",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "国家电投基金",
-        "market": "private",
-        "tier": 3
-      },
-      {
-        "name": "宁波通商基金",
-        "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
         "name": "安徽国控投资",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "恒健控股公司",
+        "name": "安芯投资",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "扬州国金集团",
+        "name": "安信乾宏",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "杭实资产管理",
+        "name": "奥博资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "江苏高投集团",
+        "name": "澳银资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "珠海高新金投",
+        "name": "邦盛资本",
+        "aliases": [
+          "南京邦盛投资管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
+      },
+      {
+        "name": "百度投资部",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
       },
       {
         "name": "百联挚高资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "英诺天使基金",
+        "name": "宝捷会基金",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
+      },
+      {
+        "name": "保利资本",
+        "aliases": [
+          "保利（横琴）资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北工投资",
+        "aliases": [
+          "北京工业发展投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北京国管",
+        "aliases": [
+          "北京国有资本运营管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北京华控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北京泰康投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北京云晖资本",
+        "aliases": [
+          "北京云晖私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北极光创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "北汽产投",
+        "aliases": [
+          "北京汽车集团产业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "本草资本",
+        "aliases": [
+          "北京三益投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "贝达基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "彬复资本",
+        "aliases": [
+          "上海子彬投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "比邻星创投",
+        "aliases": [
+          "杭州比邻星创新投资管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "比亚迪",
+        "aliases": [
+          "比亚迪投资"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博华资本",
+        "aliases": [
+          "北京博华资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博将资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博裕投资",
+        "aliases": [
+          "博裕投资顾问有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博裕资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博原资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博源资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "博远资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "不惑创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "财通资本",
+        "aliases": [
+          "浙江财通资本投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "财鑫资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
       },
       {
         "name": "财信产业基金",
+        "aliases": [
+          "湖南省财信产业基金管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "中关村发展集团",
+        "name": "策源创投",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
+      },
+      {
+        "name": "策源资本",
+        "aliases": [
+          "成都高新策源投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "昌发展",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "超越摩尔",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "常春藤资本",
+        "aliases": [
+          "上海常春藤投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "常金控",
+        "aliases": [
+          "常高新金隆控股（集团）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "长江产业投资集团",
+        "aliases": [
+          "长江产业投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "长江成长资本",
+        "aliases": [
+          "长江成长资本投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "长江创投",
+        "aliases": [
+          "长江创业投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "长江资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "长石资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "常州高新投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "常州科创",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "常州投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
       },
       {
         "name": "常州政府投资基金",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
+      },
+      {
+        "name": "朝希资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "晨道资本",
+        "aliases": [
+          "宁波梅山保税港区晨道投资合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "辰德资本",
+        "aliases": [
+          "上海甲辰私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "成都产投集团",
+        "aliases": [
+          "成都产业投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
       },
       {
         "name": "成都产业投资集团",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "珠海科技产业集团",
+        "name": "成都高新创投",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "中国互联网投资基金",
+        "name": "成都科创投",
+        "aliases": [
+          "成都科技创新投资集团有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "无锡市创新投资集团",
+        "name": "诚通基金",
+        "aliases": [
+          "诚通基金管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "星连资本(Z基金)",
+        "name": "成为资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
+      },
+      {
+        "name": "辰韬资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "重庆渝富高质基金公司",
+        "aliases": [
+          "重庆渝富高质产业母基金私募股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "春华资本",
+        "aliases": [
+          "春华资本集团"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "初心资本",
+        "aliases": [
+          "北京勿忘初心投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "川创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "川发引导基金",
+        "aliases": [
+          "四川发展产业引导股权投资基金管理有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "创东方投资",
+        "aliases": [
+          "深圳市创东方投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "创世伙伴CCV",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "创新工场",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "创享欢聚投资基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "创钰投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "丹麓资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "达晨财智",
+        "aliases": [
+          "深圳市达晨财智创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "达泰资本",
+        "aliases": [
+          "苏州达泰创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "淡马锡",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "道禾长期投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "道生资本",
+        "aliases": [
+          "杭州道生投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "道彤投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "大湾区基金",
+        "aliases": [
+          "大湾区共同家园发展基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "大钲资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "德福资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "德弘资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鼎峰科创",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鼎晖VGC",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鼎晖投资",
+        "aliases": [
+          "鼎晖股权投资管理（天津）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鼎兴量子",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鼎心资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "电科投资",
+        "aliases": [
+          "中电科投资控股有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "东方富海",
+        "aliases": [
+          "深圳市东方富海投资管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "东方嘉富",
+        "aliases": [
+          "杭州东方嘉富资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "东莞金控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "东南基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "东证资本",
+        "aliases": [
+          "上海东方证券资本投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "动能资本",
+        "aliases": [
+          "山东省新动能资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "动平衡资本",
+        "aliases": [
+          "南京动平衡投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "恩泽基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "方广资本",
+        "aliases": [
+          "上海方广投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "方源资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "方正和生",
+        "aliases": [
+          "方正和生投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "番茄资本",
+        "aliases": [
+          "宁波番茄私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "丰年资本",
+        "aliases": [
+          "丰年永泰（北京）投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "蜂巧资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "峰瑞资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "分享投资",
+        "aliases": [
+          "深圳市分享成长投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "冯源资本",
+        "aliases": [
+          "冯源（宁波）私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "福创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "福建省电子基金",
+        "aliases": [
+          "福建省电子信息产业股权投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "孚腾资本",
+        "aliases": [
+          "上海孚腾私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "复健资本",
+        "aliases": [
+          "上海复健股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "复朴投资",
+        "aliases": [
+          "北京复朴道和投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "复容投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "复星创富",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "复星锐正资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "复星投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "富浙基金",
+        "aliases": [
+          "浙江富浙股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高成投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高捷资本",
+        "aliases": [
+          "深圳市高捷金台创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高瓴投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高榕创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高榕资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高盛",
+        "aliases": [
+          "高盛集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高特佳投资",
+        "aliases": [
+          "深圳市高特佳投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "高新区",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "港信资管",
+        "aliases": [
+          "宜宾港信资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "戈壁创投",
+        "aliases": [
+          "戈壁合伙人有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "格力金投",
+        "aliases": [
+          "珠海格力金融投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "工控资本",
+        "aliases": [
+          "广州工控资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "工业园区",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "工银资本",
+        "aliases": [
+          "工银资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "光大控股",
+        "aliases": [
+          "中国光大控股有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "光谷产投",
+        "aliases": [
+          "武汉光谷产业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "光合创投",
+        "aliases": [
+          "光合创业投资基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "光速光合",
+        "aliases": [
+          "光速光合创业投资基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广东恒健控股",
+        "aliases": [
+          "广东恒健投资控股有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广东粤财基金",
+        "aliases": [
+          "广东粤财基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广发乾和",
+        "aliases": [
+          "广发乾和投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广发信德",
+        "aliases": [
+          "广发信德投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广开基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广汽资本",
+        "aliases": [
+          "广汽资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广投资本",
+        "aliases": [
+          "广投资本管理集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广西投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广州产投资本",
+        "aliases": [
+          "广州产业投资资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广州基金",
+        "aliases": [
+          "广州产业投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广州金控基金",
+        "aliases": [
+          "广州金控基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "广州开发区基金集团",
+        "aliases": [
+          "广州开发区产业基金投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "贵阳创投",
+        "aliases": [
+          "贵阳市创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国方创新",
+        "aliases": [
+          "上海国方私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国方资本",
+        "aliases": [
+          "上海国方私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国海创新资本",
+        "aliases": [
+          "国海创新资本投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国金鼎兴",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国经资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国际创投",
+        "aliases": [
+          "上海国际创投股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国际国方",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国家电投创新投资",
+        "aliases": [
+          "国家电投集团创新投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国家电投基金",
+        "aliases": [
+          "国家电投集团基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国家制造业转型升级基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国开金融",
+        "aliases": [
+          "国开金融有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国开科创",
+        "aliases": [
+          "国开科技创业投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国科嘉和",
+        "aliases": [
+          "国科嘉和（北京）投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国科投资",
+        "aliases": [
+          "中国科技产业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国生资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国盛资本",
+        "aliases": [
+          "上海国盛资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国寿股权",
+        "aliases": [
+          "国寿股权投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国舜投资",
+        "aliases": [
+          "杭州国舜股权投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国泰君安创新投资",
+        "aliases": [
+          "国泰君安创新投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国投创合",
+        "aliases": [
+          "国投创合基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国投创新（国投招商）",
+        "aliases": [
+          "国投创新投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国投创业",
+        "aliases": [
+          "国投创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国投创益",
+        "aliases": [
+          "国投创益产业基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国鑫创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国新基金",
+        "aliases": [
+          "中国国新基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国鑫投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国信创新股权",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国信弘盛",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国中资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "国铸资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "哈勃投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "哈创投集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "航发基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "杭实资产管理（杭州）有限公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "杭州资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海达投资",
+        "aliases": [
+          "天津海达创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海尔资本",
+        "aliases": [
+          "青岛海尔创业投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海富产业基金",
+        "aliases": [
+          "海富产业投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海纳亚洲基金",
+        "aliases": [
+          "海纳亚洲创投基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海松资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海通开元",
+        "aliases": [
+          "海通开元投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "海愿资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "汉康资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "昊辰资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "黑蚁资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合创资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "和达投资",
+        "aliases": [
+          "杭州和达投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合肥产投",
+        "aliases": [
+          "合肥产投资本创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合肥创新投资",
+        "aliases": [
+          "合肥市创新科技风险投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合肥高投",
+        "aliases": [
+          "合肥高新创业投资管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合肥国耀资本",
+        "aliases": [
+          "合肥国耀资本投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合肥建投资本",
+        "aliases": [
+          "合肥建投资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "合肥兴泰",
+        "aliases": [
+          "合肥兴泰资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "和高资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "和利资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "河南投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "恒健控股公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "恒信华业",
+        "aliases": [
+          "深圳市恒信华业股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "恒旭资本",
+        "aliases": [
+          "上海恒旭创领私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "荷塘创投",
+        "aliases": [
+          "荷塘创业投资管理（北京）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "和玉资本MSA CAPITAL",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "红点中国",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "弘晖基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "红杉中国",
+        "aliases": [
+          "红杉资本中国基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "洪泰基金",
+        "aliases": [
+          "北京洪泰同创投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "弘毅投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "弘章投资",
+        "aliases": [
+          "上海弘章投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厚生投资",
+        "aliases": [
+          "北京厚生投资管理中心（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厚新健投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厚雪资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "湖北产投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "湖南高新创投（纵横资产）",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "湖南高新纵横",
+        "aliases": [
+          "湖南高新纵横资产经营有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华安嘉业",
+        "aliases": [
+          "华安嘉业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华宝股权",
+        "aliases": [
+          "华宝（上海）股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华大共赢",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华登国际",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华方资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华福资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华盖资本",
+        "aliases": [
+          "华盖资本有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华金资本",
+        "aliases": [
+          "珠海华金资本股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华控基金",
+        "aliases": [
+          "北京华控投资管理集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "黄浦江资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华平投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华润资本",
+        "aliases": [
+          "华润资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华睿投资",
+        "aliases": [
+          "浙江富华睿银投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华泰紫金投资",
+        "aliases": [
+          "华泰紫金投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华兴新经济基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华芯投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华鑫投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华业天成资本",
+        "aliases": [
+          "深圳华业天成投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华映资本",
+        "aliases": [
+          "华映资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "华山资本",
+        "aliases": [
+          "华山资本WestSummitCapital"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "汇川产投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "汇鼎投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "惠华基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "惠每资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "惠山国控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "火山石投资",
+        "aliases": [
+          "上海火山石投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金鼎资本",
+        "aliases": [
+          "北京方圆金鼎投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "京国瑞",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "经纬创投",
+        "aliases": [
+          "经纬创投（北京）投资管理顾问有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金浦投资",
+        "aliases": [
+          "金浦产业投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金沙江创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金沙江联合资本",
+        "aliases": [
+          "北京金沙江联合管理咨询有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金石投资",
+        "aliases": [
+          "金石投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金镒资本",
+        "aliases": [
+          "金镒（珠海）股权投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "金雨茂物",
+        "aliases": [
+          "金雨茂物投资管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "基石资本",
+        "aliases": [
+          "基石资产管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "吉富创投",
+        "aliases": [
+          "吉富创业投资股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "锦秋基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "济峰资本",
+        "aliases": [
+          "萍乡济峰私募基金管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "加华资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "江苏高投集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "江西省国控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "江阴新国联",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "交银资本",
+        "aliases": [
+          "交银资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "交子资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "嘉御资本",
+        "aliases": [
+          "维新力特（上海）投资管理咨询有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "建发新兴投资",
+        "aliases": [
+          "厦门建发新兴产业股权投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "建投基金",
+        "aliases": [
+          "建信金投私募基金管理（北京）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "建信（北京）投资",
+        "aliases": [
+          "建信（北京）投资基金管理有限责任公司（建信"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "健壹资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "建银国际",
+        "aliases": [
+          "建银国际（控股）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "建元管理",
+        "aliases": [
+          "上海建元股权投资基金管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "架桥资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "稼沃资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "接力基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "九鼎投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "九合创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "九智资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "九州通创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "君海创芯",
+        "aliases": [
+          "君海创芯（北京）咨询管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "君联资本",
+        "aliases": [
+          "君联资本管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "君盛投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "君桐资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "聚合资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "康君资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "康桥资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "凯风创投",
+        "aliases": [
+          "宁波保税区凯风创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "凯辉基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "凯联资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "科金控股",
+        "aliases": [
+          "广东省粤科金融集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "昆仑资本",
+        "aliases": [
+          "中国石油集团昆仑资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "昆仲资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "宽带资本",
+        "aliases": [
+          "北京天地融创创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "蓝驰创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "朗玛峰创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "朗姿韩亚资管",
+        "aliases": [
+          "北京朗姿韩亚资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "老虎基金",
+        "aliases": [
+          "老虎环球基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "老鹰基金",
+        "aliases": [
+          "北京老鹰投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "雷石投资",
+        "aliases": [
+          "天津雷石泰合股权投资基金管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "临港科创投",
+        "aliases": [
+          "上海临港科创投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "零一创投01VC",
+        "aliases": [
+          "上海零颐创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "临芯投资",
+        "aliases": [
+          "上海临芯投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "礼来亚洲基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "力鼎资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "力合创投",
+        "aliases": [
+          "深圳市力合创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "力合基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "力合金融",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "力合资本",
+        "aliases": [
+          "力合清智科创（深圳）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "联创资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "梁创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "联新资本",
+        "aliases": [
+          "上海联新资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "联想创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "联想之星",
+        "aliases": [
+          "北京联想之星投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "两江资本",
+        "aliases": [
+          "重庆两江股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "龙磐投资",
+        "aliases": [
+          "北京龙磐投资管理咨询中心（普通合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鲁信创投",
+        "aliases": [
+          "鲁信创业投资集团股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "陆石投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "绿金投资",
+        "aliases": [
+          "绿色发展基金私募股权投资管理（上海）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "绿洲资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "麦星投资",
+        "aliases": [
+          "深圳市麦星投资管理中心（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "梅花创投",
+        "aliases": [
+          "宁波梅花天使投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "美团龙珠",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "明势创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "明势资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "民生股权基金",
+        "aliases": [
+          "民生股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "幂方健康基金",
+        "aliases": [
+          "上海幂方资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "摩根士丹利",
+        "aliases": [
+          "摩根士丹利股权投资亚洲"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "南创投",
+        "aliases": [
+          "南京市创新投资集团有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "南京市创新投资集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "南山战新投",
+        "aliases": [
+          "深圳市南山战略新兴产业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "南通科创",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "南通投管",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "宁波通商基金",
+        "aliases": [
+          "宁波通商基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "农银资本管理有限公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "欧瑞泽投资集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "磐霖资本",
+        "aliases": [
+          "上海磐霖资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "平安资本",
+        "aliases": [
+          "平安资本有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浦东创投",
+        "aliases": [
+          "上海浦东创新投资发展（集团）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浦东科创集团",
+        "aliases": [
+          "上海浦东科创集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "普华资本",
+        "aliases": [
+          "浙江普华天勤股权投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浦科投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "普罗资本",
+        "aliases": [
+          "珠海普罗私募基金管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "普洛斯",
+        "aliases": [
+          "普洛斯投资（上海）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浦耀信晔",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "青岛城投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "青岛青松资本",
+        "aliases": [
+          "青岛青松创业投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "清控银杏",
+        "aliases": [
+          "清控银杏创业投资管理（北京）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "青山资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "青松基金",
+        "aliases": [
+          "深圳市前海青松创业投资基金管理企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "清松资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "清源投资",
+        "aliases": [
+          "深圳清源投资管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "清智资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "奇安投资",
+        "aliases": [
+          "奇安（北京）投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "奇绩创坛",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "启承资本",
+        "aliases": [
+          "北京启承世纪咨询有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "启迪之星创投",
+        "aliases": [
+          "启迪之星（北京）投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "啟赋资本",
+        "aliases": [
+          "启赋私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "启明创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "千乘资本",
+        "aliases": [
+          "三亚千乘创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "前海方舟",
+        "aliases": [
+          "前海方舟资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "衢州信安资本",
+        "aliases": [
+          "衢州市国资信安资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "人保资本股权",
+        "aliases": [
+          "人保资本股权投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "日初资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "容亿投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "软银中国资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "瑞力投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "三行资本",
+        "aliases": [
+          "北京三行资本管理有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "赛富投资基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "赛泽资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "山东财金",
+        "aliases": [
+          "山东省财金资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "山蓝资本",
+        "aliases": [
+          "上海山蓝私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "山行资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "陕投成长",
+        "aliases": [
+          "陕西省成长性企业引导基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "陕西产投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "善达投资",
+        "aliases": [
+          "上海善达投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "尚珹&鸿为资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海国和投资",
+        "aliases": [
+          "上海国和现代服务业股权投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海国投科创/上海科创集团",
+        "aliases": [
+          "上海科技创业投资（集团）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海国投先导",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海科创/海望资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海科创基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海联和投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海生物医药基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上海自贸区基金",
+        "aliases": [
+          "上海自贸区股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "尚颀资本",
+        "aliases": [
+          "上海尚颀投资管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "上实资本",
+        "aliases": [
+          "上海上实资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "深创投集团",
+        "aliases": [
+          "深圳市创新投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "深担创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "深高新投",
+        "aliases": [
+          "深圳市高新投集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "深投控资本",
+        "aliases": [
+          "深圳市投控资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "深圳天使母基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盛景嘉成",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盛世景集团",
+        "aliases": [
+          "盛世景资产管理集团股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盛世投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盛宇投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "时代伯乐",
+        "aliases": [
+          "深圳市时代伯乐创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "石溪资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "十月资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "首程控股",
+        "aliases": [
+          "首程控股有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "首钢基金",
+        "aliases": [
+          "北京首钢基金有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "顺为资本",
+        "aliases": [
+          "北京顺为资本投资咨询有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "顺禧基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "水木创投",
+        "aliases": [
+          "北京水木华鼎创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "斯道资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "四川产业基金",
+        "aliases": [
+          "四川产业振兴基金投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "四川省科创投资集团",
+        "aliases": [
+          "四川省科技创新投资集团有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "四川兴川",
+        "aliases": [
+          "四川兴川重点项目股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "松禾资本",
+        "aliases": [
+          "深圳市松禾资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "苏创投集团/国发创投",
+        "aliases": [
+          "苏州国发创业投资控股有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "苏高新创投",
+        "aliases": [
+          "苏州高新创业投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "穗开投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "唐兴资本",
+        "aliases": [
+          "唐兴天下投资管理（西安）有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "泰达科投",
+        "aliases": [
+          "天津泰达科技投资股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "泰福资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "泰格医药",
+        "aliases": [
+          "杭州泰格医药科技股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "泰恒投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "太盟投资",
+        "aliases": [
+          "太盟投资集团"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "太平创新",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "钛信资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "腾讯投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "腾业创投",
+        "aliases": [
+          "北京腾业创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天创资本",
+        "aliases": [
+          "天津创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天风天睿",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天际资本",
+        "aliases": [
+          "天际资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天空工场创投基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天士力资本",
+        "aliases": [
+          "天士力资本控股（北京）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天堂硅谷",
+        "aliases": [
+          "天堂硅谷创业投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天图投资",
+        "aliases": [
+          "深圳市天图投资管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "天鹰资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "通和毓承",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "同创伟业",
+        "aliases": [
+          "深圳同创伟业资产管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "投控东海",
+        "aliases": [
+          "深圳市投控东海投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "头头是道",
+        "aliases": [
+          "头头是道基金"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "温润投资",
+        "aliases": [
+          "温润（珠海）私募基金管理合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "温氏投资",
+        "aliases": [
+          "广东温氏投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "维梧资本",
+        "aliases": [
+          "维梧股权投资管理（上海）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "蔚来资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "未来资产资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "吴江创投",
+        "aliases": [
+          "苏州市吴江创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "无锡市创新投资集团有限公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "无锡新投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "武汉产投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "武进国投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "五矿创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "五源资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "武岳峰科创",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "熙诚金睿",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "熙诚致远",
+        "aliases": [
+          "熙诚致远私募基金管理（北京）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "锡创投",
+        "aliases": [
+          "无锡市创新投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "西高投",
+        "aliases": [
+          "西安高新技术产业风险投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "新鼎资本",
+        "aliases": [
+          "北京新鼎荣盛资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "芯动能投资",
+        "aliases": [
+          "北京芯动能投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "兴橙资本",
+        "aliases": [
+          "上海兴橙投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "兴富资本",
+        "aliases": [
+          "兴富投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "星连资本（Z基金）",
+        "aliases": [
+          "北京星连肇基私募基金管理有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "兴湘资本",
+        "aliases": [
+          "湖南兴湘资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "兴业国信资管",
+        "aliases": [
+          "兴业国信资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "兴证投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "兴证资本",
+        "aliases": [
+          "兴证创新资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "芯联资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "新尚资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "新微资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "曦域资本",
+        "aliases": [
+          "上海曦域资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "信达资本",
+        "aliases": [
+          "信达资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "杏泽资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "相城国控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "相城金控",
+        "aliases": [
+          "苏州市相城金融控股（集团）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "襄禾资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "湘投基金",
+        "aliases": [
+          "湖南能源集团湘投私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "先进资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "祥峰投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "险峰",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "小米长江产业基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "小米产投",
+        "aliases": [
+          "小米集团产业投资部"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "小苗朗程",
+        "aliases": [
+          "上海小苗朗程投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "夏尔巴投资",
+        "aliases": [
+          "珠海夏尔巴股权投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厦门创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厦门国升发展私募基金管理有限责任公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厦门火炬创投",
+        "aliases": [
+          "厦门火炬集团创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厦门金圆",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "厦门联和资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "线性资本",
+        "aliases": [
+          "上海线性投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "协立投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "讯飞创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "阳光融汇资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "扬州国金集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "扬子江基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "雅惠投资",
+        "aliases": [
+          "北京雅惠资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "耀途资本",
+        "aliases": [
+          "上海曜途投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "一村资本",
+        "aliases": [
+          "一村资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "渶策资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "英诺基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "英诺天使基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "银鞍资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盈峰投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盈港资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "盈科资本",
+        "aliases": [
+          "盈科创新资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "银杏谷资本",
+        "aliases": [
+          "浙江银杏谷投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "倚锋资本",
+        "aliases": [
+          "深圳市倚锋投资管理企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "隐山资本",
+        "aliases": [
+          "珠海隐山资本股权投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "毅达资本",
+        "aliases": [
+          "江苏毅达股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "亦庄国投",
+        "aliases": [
+          "北京亦庄国际投资发展有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "优山投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "优山资本",
+        "aliases": [
+          "深圳前海三合股权基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "涌铧投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "友财投资",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "渝富基金",
+        "aliases": [
+          "重庆渝富资本股权投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "沄柏资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "云锋基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "鋆昊资本",
+        "aliases": [
+          "珠海鋆昊资产管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "云九资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "云启资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "愉悦资本",
+        "aliases": [
+          "北京愉悦资本投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "豫资集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "源创多盈",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "源渡创投",
+        "aliases": [
+          "源渡股权投资管理（上海）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "元航资本",
+        "aliases": [
+          "北京元航投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "元禾厚望",
+        "aliases": [
+          "苏州元禾控股股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "元禾璞华",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "元禾原点",
+        "aliases": [
+          "苏州工业园区元禾原点创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "源禾资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "元璟资本",
+        "aliases": [
+          "杭州元璟投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "源来资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "源码资本",
+        "aliases": [
+          "北京源码资本投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "元生创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "远翼投资",
+        "aliases": [
+          "远翼投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "远毅资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "远致创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "远致富海",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "粤财创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "越秀产业基金",
+        "aliases": [
+          "广州越秀产业投资基金管理股份有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张创投集团",
+        "aliases": [
+          "张家港创新投资集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张家港产投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张家港产业资本投资公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张家港创新投资集团有限公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张家港经开国投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张江浩珩",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "张江科投",
+        "aliases": [
+          "上海张江科技创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "招商局创投",
+        "aliases": [
+          "招商局创新投资管理有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "招商致远资本",
+        "aliases": [
+          "招商致远资本投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "招商资本",
+        "aliases": [
+          "招商局资本投资有限责任公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "招银国际资本",
+        "aliases": [
+          "招银国际资本管理（深圳）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "真格基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浙江产投",
+        "aliases": [
+          "浙江省产投集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浙江金控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "浙江省创新产业私募基金管理有限公司",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
       },
       {
         "name": "浙江省创新投资集团",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "Advent安宏资本",
+        "name": "正海资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "ATM Capital",
+        "name": "正合资本",
+        "aliases": [
+          "无锡惠开正合私募基金管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "联影医疗",
-        "market": "public",
-        "tier": 3
-      },
-      {
-        "name": "禾赛科技",
-        "market": "public",
-        "tier": 3
-      },
-      {
-        "name": "伟测半导体",
-        "market": "public",
-        "tier": 3
-      },
-      {
-        "name": "盟科药业",
-        "market": "public",
-        "tier": 3
-      },
-      {
-        "name": "百融云创",
-        "market": "public",
-        "tier": 3
-      },
-      {
-        "name": "美腕",
+        "name": "正心谷资本",
+        "aliases": [
+          "上海正心谷投资管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "影谱科技",
+        "name": "浙商创投",
+        "aliases": [
+          "浙商创投股份有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "微拍堂",
+        "name": "智路资本",
+        "aliases": [
+          "北京智路资产管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "轻松健康",
-        "market": "public",
-        "tier": 3
-      },
-      {
-        "name": "小电科技",
+        "name": "中安资本",
+        "aliases": [
+          "安徽中安资本管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "博睿康",
+        "name": "中兵顺景",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "灵心巧手",
+        "name": "中车资本",
+        "aliases": [
+          "中车资本管理有限公司"
+        ],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "无问芯穹",
+        "name": "钟鼎资本",
+        "aliases": [],
         "market": "private",
-        "tier": 3
+        "tier": 2
       },
       {
-        "name": "微芯生物",
-        "market": "public",
-        "tier": 3
+        "name": "中电基金",
+        "aliases": [
+          "中电产融私募基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中电科基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中电智慧基金",
+        "aliases": [
+          "中电智慧基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中关村发展集团",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中关村科学城公司",
+        "aliases": [
+          "北京中关村科学城创新发展有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中关村资本",
+        "aliases": [
+          "北京中关村资本基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中国风投",
+        "aliases": [
+          "中国风险投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中国互联网投资基金",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中国石化资本",
+        "aliases": [
+          "中国石化集团资本有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中航融富",
+        "aliases": [
+          "中航融富基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中金资本",
+        "aliases": [
+          "中金资本运营有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中交资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中建材新材料基金",
+        "aliases": [
+          "中建材（安徽）新材料产业投资基金合伙企业（有限合伙）"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中科创星",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中科院创投",
+        "aliases": [
+          "中科院创业投资管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中科院资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中平资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中山创投",
+        "aliases": [
+          "中山创业投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中泰资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中网投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中芯聚源",
+        "aliases": [
+          "中芯聚源私募基金管理（上海）有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中鑫资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中信金石",
+        "aliases": [
+          "中信金石投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中信建投资本",
+        "aliases": [
+          "中信建投资本管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中信聚信",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中信资本",
+        "aliases": [
+          "中信资本控股有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中小担创投",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中银投",
+        "aliases": [
+          "中银集团投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中银资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中移资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "中原联创",
+        "aliases": [
+          "河南中原联创投资基金管理有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "洲岭资本",
+        "aliases": [
+          "LYFE Capital 洲岭资本"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "众为资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "众行资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "珠海高新金投",
+        "aliases": [
+          "珠海高新金融投资有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "珠海金控",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "珠海科技产业集团",
+        "aliases": [
+          "珠海科技产业集团有限公司"
+        ],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "紫金港资本",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "紫金科创",
+        "aliases": [],
+        "market": "private",
+        "tier": 2
+      },
+      {
+        "name": "字节跳动",
+        "aliases": [
+          "北京抖音信息服务有限公司"
+        ],
+        "market": "private",
+        "tier": 2
       }
     ]
   }

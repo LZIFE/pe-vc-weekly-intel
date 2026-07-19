@@ -16,7 +16,9 @@ import random
 import re
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -478,3 +480,154 @@ def load_crawler_rows(paths: Iterable[str | Path]) -> list[dict[str, Any]]:
         except (OSError, json.JSONDecodeError, AttributeError):
             continue
     return rows
+
+
+def fetch_ai_web_package(channel: str, *, days: int = 90) -> dict[str, Any]:
+    """Download and validate a versioned intelligence package from AI_web.
+
+    This reads already-collected cloud data and never triggers an RSS crawl.
+    """
+    if channel not in {"media", "private-equity"}:
+        raise ValueError("channel must be media or private-equity")
+    base_url = os.environ.get("AI_WEB_BASE_URL", "https://aiweb-roan.vercel.app").rstrip("/")
+    query = urllib.parse.urlencode({"channel": channel, "days": max(1, min(days, 120))})
+    headers = {"Accept": "application/json", "User-Agent": "AI-web automation consumer/1.0"}
+    secret = os.environ.get("AI_WEB_CRON_SECRET", "").strip()
+    if secret:
+        headers["Authorization"] = f"Bearer {secret}"
+    request = urllib.request.Request(f"{base_url}/api/intelligence/export?{query}", headers=headers)
+    with urllib.request.urlopen(request, timeout=int(os.environ.get("AI_WEB_TIMEOUT", "60"))) as response:
+        package = json.loads(response.read().decode("utf-8"))
+    if not isinstance(package, dict) or package.get("schemaVersion") != 1:
+        raise RuntimeError("AI_web 数据包版本无效")
+    if package.get("channel") != channel or not isinstance(package.get("items"), list):
+        raise RuntimeError("AI_web 数据包契约不完整")
+    if int(package.get("count", -1)) != len(package["items"]):
+        raise RuntimeError("AI_web 数据包 count 与 items 不一致")
+    return package
+
+
+def _source_host(value: str) -> str:
+    try:
+        return (urllib.parse.urlparse(value).hostname or "").lower().removeprefix("www.")
+    except ValueError:
+        return ""
+
+
+def _verified_feed_url(article_url: str) -> str:
+    """Return a verified direct RSS/Atom URL when one is cheaply discoverable."""
+    if os.environ.get("AI_WEB_DISCOVER_DIRECT_RSS", "1") == "0":
+        return ""
+    parsed = urllib.parse.urlparse(article_url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return ""
+    origin = f"{parsed.scheme}://{parsed.netloc}/"
+    candidates: list[str] = []
+    try:
+        request = urllib.request.Request(origin, headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html"})
+        with urllib.request.urlopen(request, timeout=int(os.environ.get("SOURCE_DISCOVERY_TIMEOUT", "6"))) as response:
+            content = response.read(512_000).decode("utf-8", errors="ignore")
+        for match in re.finditer(
+            r'<link[^>]+(?:type=["\']application/(?:rss|atom)\+xml["\']|rel=["\'][^"\']*alternate[^"\']*["\'])[^>]+>',
+            content,
+            flags=re.I,
+        ):
+            href = re.search(r'href=["\']([^"\']+)', match.group(0), flags=re.I)
+            if href:
+                candidates.append(urllib.parse.urljoin(origin, href.group(1)))
+    except Exception:
+        pass
+    candidates.extend(urllib.parse.urljoin(origin, suffix) for suffix in ("feed", "rss.xml", "atom.xml"))
+    for candidate in list(dict.fromkeys(candidates))[:6]:
+        try:
+            request = urllib.request.Request(candidate, headers={"User-Agent": "AI-web source discovery/1.0"})
+            with urllib.request.urlopen(request, timeout=int(os.environ.get("SOURCE_DISCOVERY_TIMEOUT", "6"))) as response:
+                data = response.read(1_000_000)
+            tag = ET.fromstring(data).tag.lower()
+            if tag.endswith("rss") or tag.endswith("feed") or tag.endswith("rdf"):
+                return candidate
+        except Exception:
+            continue
+    return ""
+
+
+def discover_source_candidates(
+    channel: str,
+    rows: Iterable[dict[str, Any]],
+    package: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Compare Doubao result hosts with AI_web's known source inventory."""
+    known_hosts = {
+        str(source.get("host", "")).lower().removeprefix("www.")
+        for source in package.get("sourceInventory", [])
+        if isinstance(source, dict)
+    }
+    ignored_hosts = {"google.com", "baidu.com", "bing.com", "news.google.com"}
+    limit = max(0, int(os.environ.get("SOURCE_CANDIDATE_LIMIT", "10")))
+    candidates: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        url = str(row.get("url") or row.get("Url") or "").strip()
+        host = _source_host(url)
+        if not host or host in known_hosts or host in ignored_hosts or host in seen:
+            continue
+        seen.add(host)
+        direct_feed_url = _verified_feed_url(url) if len(candidates) < limit else ""
+        candidates.append({
+            "channel": channel,
+            "sourceName": str(row.get("source") or row.get("SiteName") or host).strip()[:100],
+            "articleUrl": url,
+            "directFeedUrl": direct_feed_url or None,
+            "rsshubRouteHint": None if direct_feed_url else f"为 {host} 评估或新建 RSSHub 路由",
+            "evidenceTitle": str(row.get("title") or row.get("Title") or "").strip()[:180],
+            "discoveredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        })
+        if len(candidates) >= limit:
+            break
+    return candidates
+
+
+def save_source_candidates(path: str | Path, candidates: list[dict[str, Any]]) -> None:
+    destination = Path(path)
+    existing: list[dict[str, Any]] = []
+    try:
+        value = json.loads(destination.read_text(encoding="utf-8"))
+        existing = value if isinstance(value, list) else []
+    except (OSError, json.JSONDecodeError):
+        pass
+    merged: dict[str, dict[str, Any]] = {}
+    for candidate in [*existing, *candidates]:
+        host = _source_host(str(candidate.get("articleUrl", "")))
+        channel = str(candidate.get("channel", ""))
+        if host and channel:
+            merged[f"{channel}\0{host}"] = candidate
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    tmp = destination.with_suffix(destination.suffix + ".tmp")
+    tmp.write_text(json.dumps(list(merged.values()), ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(destination)
+
+
+def submit_source_candidates(candidates: list[dict[str, Any]]) -> tuple[int, str]:
+    """Submit source discoveries to AI_web's cloud review queue."""
+    if not candidates:
+        return 0, ""
+    secret = os.environ.get("AI_WEB_CRON_SECRET", "").strip()
+    if not secret:
+        return 0, "AI_WEB_CRON_SECRET 未配置；候选源仅保存到本地文件"
+    base_url = os.environ.get("AI_WEB_BASE_URL", "https://aiweb-roan.vercel.app").rstrip("/")
+    request = urllib.request.Request(
+        f"{base_url}/api/intelligence/source-candidates",
+        data=json.dumps({"candidates": candidates}, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {secret}",
+            "Content-Type": "application/json",
+            "User-Agent": "AI-web automation source feedback/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=int(os.environ.get("AI_WEB_TIMEOUT", "60"))) as response:
+            value = json.loads(response.read().decode("utf-8"))
+        return int(value.get("accepted", 0)), ""
+    except Exception as exc:
+        return 0, f"AI_web 候选源反馈失败：{exc}"
