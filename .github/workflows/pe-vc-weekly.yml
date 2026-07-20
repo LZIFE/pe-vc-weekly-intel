@@ -1,10 +1,6 @@
 name: PE VC Full-List Intelligence
 
 on:
-  schedule:
-    # One-time deployment target: 2026-07-21 08:00 Asia/Shanghai (00:00 UTC).
-    # The date gate below prevents this date-only cron from running in later years.
-    - cron: "0 0 21 7 *"
   workflow_dispatch:
     inputs:
       send_email:
@@ -17,26 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  schedule-gate:
-    runs-on: ubuntu-latest
-    outputs:
-      should_run: ${{ steps.gate.outputs.should_run }}
-    steps:
-      - name: Allow the target date or a manual run
-        id: gate
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          TARGET_BEIJING_DATE: "2026-07-21"
-        run: |
-          if [ "${EVENT_NAME}" = "workflow_dispatch" ] || [ "$(TZ=Asia/Shanghai date +%F)" = "${TARGET_BEIJING_DATE}" ]; then
-            echo "should_run=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "should_run=false" >> "${GITHUB_OUTPUT}"
-          fi
-
   generate-and-send:
-    needs: schedule-gate
-    if: needs.schedule-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
@@ -45,7 +22,7 @@ jobs:
       SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       SMTP_FROM: ${{ secrets.SMTP_FROM }}
-      RECIPIENTS: daniel.lu@dtcap.com,jing.guo@dtdyfund.com,roxan.tong@dtdyfund.com,alison.lee@dtdyfund.com
+      RECIPIENTS: daniel.lu@dtcap.com,jing.guo@dtdyfund.com,roxan.tong@dtdyfund.com,alison.lee@dtdyfund.com,readylinoffice@gmail.com
 
       AI_WEB_BASE_URL: https://aiweb-roan.vercel.app
       AI_WEB_TIMEOUT: "120"
@@ -78,7 +55,7 @@ jobs:
           restore-keys: |
             pe-intelligence-${{ runner.os }}-
 
-      - name: Generate report at Beijing 08:00
+      - name: Generate report
         run: |
           python3 pe_vc_weekly_report.py \
             --dry-run \
@@ -115,21 +92,8 @@ jobs:
           print(json.dumps({"items": len(report["items"]), "coverage": coverage}, ensure_ascii=False))
           PY
 
-      - name: Wait until Beijing 09:00
-        if: github.event_name == 'schedule' || inputs.send_email
-        run: |
-          NOW="$(date -u +%s)"
-          BEIJING_DATE="$(TZ=Asia/Shanghai date +%F)"
-          TARGET="$(date -u -d "${BEIJING_DATE} 01:00:00" +%s)"
-          if [ "${NOW}" -lt "${TARGET}" ]; then
-            echo "Waiting until ${BEIJING_DATE} 09:00 Asia/Shanghai."
-            sleep "$((TARGET - NOW))"
-          else
-            echo "Beijing 09:00 has passed; sending immediately."
-          fi
-
       - name: Send validated inline HTML
-        if: github.event_name == 'schedule' || inputs.send_email
+        if: inputs.send_email
         run: |
           python3 pe_vc_weekly_report.py \
             --send-existing \
